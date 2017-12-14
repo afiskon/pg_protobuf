@@ -1,6 +1,6 @@
-# pg_protobuf
+# pg\_protobuf
 
-Protobuf support for PostgreSQL
+Protobuf support for PostgreSQL.
 
 How to install:
 
