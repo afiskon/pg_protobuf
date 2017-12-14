@@ -1,0 +1,110 @@
+CREATE EXTENSION pg_protobuf;
+SELECT protobuf_decode(null);
+ protobuf_decode 
+-----------------
+ 
+(1 row)
+
+SELECT protobuf_decode('garbage' :: bytea);
+ERROR:  Usupported protobuf type.
+DETAIL:  protobuf_decode_internal() doesn't support type 7 yet.
+HINT:  Sorry for that :( Patches are welcome!
+SELECT protobuf_decode(E'\\x0a0365617810321880022202100f' :: bytea);
+                       protobuf_decode                        
+--------------------------------------------------------------
+ field tag = 1, field_type = bytes, length = 3, offset = 2   +
+ field tag = 2, field_type = integer, value = 50, offset = 0 +
+ field tag = 3, field_type = integer, value = 256, offset = 0+
+ field tag = 4, field_type = bytes, length = 2, offset = 12  +
+ 
+(1 row)
+
+SELECT protobuf_decode(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea);
+                        protobuf_decode                        
+---------------------------------------------------------------
+ field tag = 1, field_type = bytes, length = 7, offset = 2    +
+ field tag = 2, field_type = integer, value = 25, offset = 0  +
+ field tag = 3, field_type = integer, value = 1024, offset = 0+
+ field tag = 5, field_type = bytes, length = 6, offset = 16   +
+ 
+(1 row)
+
+SELECT protobuf_get_integer(null, 1);
+ protobuf_get_integer 
+----------------------
+                     
+(1 row)
+
+SELECT protobuf_get_integer(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 1);
+ protobuf_get_integer 
+----------------------
+                     
+(1 row)
+
+SELECT protobuf_get_integer(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 2);
+ protobuf_get_integer 
+----------------------
+                   25
+(1 row)
+
+SELECT protobuf_get_integer(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 3);
+ protobuf_get_integer 
+----------------------
+                 1024
+(1 row)
+
+SELECT protobuf_get_bytes(null, 1);
+ protobuf_get_bytes 
+--------------------
+ 
+(1 row)
+
+SELECT protobuf_get_bytes(E'\\x0a0365617810321880022202100f' :: bytea, 1);
+ protobuf_get_bytes 
+--------------------
+ \x656178
+(1 row)
+
+SELECT protobuf_get_bytes(E'\\x0a0365617810321880022202100f' :: bytea, 4);
+ protobuf_get_bytes 
+--------------------
+ \x100f
+(1 row)
+
+SELECT protobuf_get_bytes(E'\\x0a0365617810321880022202100f' :: bytea, 5);
+ protobuf_get_bytes 
+--------------------
+ 
+(1 row)
+
+SELECT protobuf_get_bytes(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 1);
+ protobuf_get_bytes 
+--------------------
+ \x616669736b6f6e
+(1 row)
+
+SELECT protobuf_get_bytes(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 4);
+ protobuf_get_bytes 
+--------------------
+ 
+(1 row)
+
+SELECT protobuf_get_bytes(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 5);
+ protobuf_get_bytes 
+--------------------
+ \x0a0200011064
+(1 row)
+
+SELECT protobuf_get_string(E'\\x0a0365617810321880022202100f' :: bytea, 1);
+ protobuf_get_string 
+---------------------
+ eax
+(1 row)
+
+SELECT protobuf_get_string(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 1);
+ protobuf_get_string 
+---------------------
+ afiskon
+(1 row)
+
+DROP EXTENSION pg_protobuf;
