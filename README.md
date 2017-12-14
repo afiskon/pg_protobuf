@@ -26,19 +26,19 @@ insert into heroes values
 create function hero_name(x bytea) returns text as $$
 begin
 return protobuf_get_string(x, 1);
-end;
+end
 $$ language 'plpgsql' immutable;
 
 create function hero_hp(x bytea) returns text as $$
 begin
 return protobuf_get_integer(x, 2);
-end;
+end
 $$ language 'plpgsql' immutable;
 
 create function hero_xp(x bytea) returns text as $$
 begin
 return protobuf_get_integer(x, 3);
-end;
+end
 $$ language 'plpgsql' immutable;
 
 create index hero_name_idx on heroes using btree(hero_name(x));
