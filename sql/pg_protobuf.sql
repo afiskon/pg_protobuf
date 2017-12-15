@@ -34,4 +34,6 @@ SELECT protobuf_get_string(E'\\x0a0365617810321880022202100f' :: bytea, 1);
 
 SELECT protobuf_get_string(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 1);
 
+SELECT protobuf_get_string(E'\\x10191880082a060a0200011064822007616669736b6f6e' :: bytea, 512);
+
 DROP EXTENSION pg_protobuf;

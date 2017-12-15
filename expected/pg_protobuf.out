@@ -107,4 +107,10 @@ SELECT protobuf_get_string(E'\\x0a07616669736b6f6e10191880082a060a0200011064' ::
  afiskon
 (1 row)
 
+SELECT protobuf_get_string(E'\\x10191880082a060a0200011064822007616669736b6f6e' :: bytea, 512);
+ protobuf_get_string 
+---------------------
+ afiskon
+(1 row)
+
 DROP EXTENSION pg_protobuf;

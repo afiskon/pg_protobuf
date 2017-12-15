@@ -21,7 +21,7 @@ PG_FUNCTION_INFO_V1(protobuf_get_integer);
 PG_FUNCTION_INFO_V1(protobuf_get_bytes);
 
 typedef struct {
-	uint8 tag;
+	uint32 tag;
 	uint8 type;
 	uint32 value_or_length;
 	uint32 offset; // for PROTOBUF_TYPE_BYTES only
@@ -139,11 +139,11 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 	result->nfields = 0;
 
 	while(protobuf_size > 0) {
-		uint8 tag = (*protobuf_data) >> 3;
+		uint8 cont = (*protobuf_data) >> 7;
+		uint32 tag = ((*protobuf_data) >> 3) & 0x0F;
 		uint8 type = (*protobuf_data) & 0x07;
-		uint8 bytes_read = 0;
-		uint8 shift = 0;
 		uint32 value_or_length = 0;
+		uint8 bytes_read, shift;
 
 		if((type != PROTOBUF_TYPE_INTEGER) && (type != PROTOBUF_TYPE_BYTES))
 			ereport(ERROR,
@@ -157,6 +157,39 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 		protobuf_data++;
 		protobuf_size--;
 
+		shift = 4;
+		bytes_read = 1;
+		while(cont) {
+			if(bytes_read == 4)
+				ereport(ERROR,
+					(
+					 errcode(ERRCODE_INTERNAL_ERROR),
+					 errmsg("Too long tag encoded in the protobuf data."),
+					 errdetail("protobuf_decode_internal() - tag variable is "
+								"uint32 and your protobuf stores larger tags."),
+					 errhint("Sorry for that :( Patches are welcome!")
+					));
+
+			if(protobuf_size == 0)
+				ereport(ERROR,
+					(
+					 errcode(ERRCODE_INTERNAL_ERROR),
+					 errmsg("Unexpected end of the protobuf data."),
+					 errdetail("protobuf_decode_internal() - data ended while still reading tag variable."),
+					 errhint("Protobuf data is corrupted or there is a bug in pg_protobuf.")
+					));
+	
+			cont = (*protobuf_data) >> 7;
+			tag = tag | (((*protobuf_data) & 0x7F) << shift);
+			shift += 7;
+			bytes_read++;
+
+			protobuf_data++;
+			protobuf_size--;
+		}
+
+		shift = 0;
+		bytes_read = 0;
 		for(;;) {
 			uint8 temp;
 
