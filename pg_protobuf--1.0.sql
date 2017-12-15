@@ -18,6 +18,6 @@ CREATE FUNCTION protobuf_get_bytes(bytea, int)
 
 CREATE FUNCTION protobuf_get_string(data bytea, tag int) RETURNS text AS $$
 BEGIN
-	RETURN encode(protobuf_get_bytes(data, tag), 'escape');
+	RETURN convert_from(protobuf_get_bytes(data, tag), 'utf-8');
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
