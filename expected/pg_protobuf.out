@@ -113,10 +113,22 @@ SELECT protobuf_get_string(E'\\x10191880082a060a0200011064822007616669736b6f6e' 
  afiskon
 (1 row)
 
+SELECT protobuf_get_string(E'\\x10321880022202100ffaa3e80303656178', 999999);
+ protobuf_get_string 
+---------------------
+ eax
+(1 row)
+
 SELECT protobuf_get_string(E'\\x10321880022202100f82200ad0a8d183d180d0b8d0ba' :: bytea, 512);
  protobuf_get_string 
 ---------------------
  Шурик
+(1 row)
+
+SELECT length(protobuf_get_string(E'\\x10321880022202100f82208e02' || convert_to(repeat('a', 270), 'utf-8'), 512));
+ length 
+--------
+    270
 (1 row)
 
 DROP EXTENSION pg_protobuf;
