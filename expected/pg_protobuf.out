@@ -131,4 +131,10 @@ SELECT length(protobuf_get_string(E'\\x10321880022202100f82208e02' || convert_to
     270
 (1 row)
 
+SELECT protobuf_get_integer(E'\\x0a036561781088ef99abc5e88c91111880022202100f', 2);
+ protobuf_get_integer 
+----------------------
+  1234605616436508552
+(1 row)
+
 DROP EXTENSION pg_protobuf;

@@ -23,7 +23,7 @@ PG_FUNCTION_INFO_V1(protobuf_get_bytes);
 typedef struct {
 	uint32 tag;
 	uint8 type;
-	uint32 value_or_length;
+	uint64 value_or_length;
 	uint32 offset; // for PROTOBUF_TYPE_BYTES only
 } ProtobufFieldInfo;
 
@@ -53,7 +53,7 @@ Datum protobuf_decode(PG_FUNCTION_ARGS) {
 
 	for(i = 0; i < decode_result.nfields; i++) {
 		len = snprintf(temp_buff, sizeof(temp_buff),
-			"field tag = %u, field_type = %s, %s = %u, offset = %u\n",
+			"field tag = %u, field_type = %s, %s = %lu, offset = %u\n",
 			decode_result.field_info[i].tag,
 			( decode_result.field_info[i].type == PROTOBUF_TYPE_INTEGER ? "integer" : "bytes"),
 			( decode_result.field_info[i].type == PROTOBUF_TYPE_INTEGER ? "value" : "length"),
@@ -97,7 +97,7 @@ Datum protobuf_get_integer(PG_FUNCTION_ARGS) {
 				// if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error
 				PG_RETURN_NULL();
 
-			PG_RETURN_INT32(decode_result.field_info[i].value_or_length);
+			PG_RETURN_INT64((int64)decode_result.field_info[i].value_or_length);
 		}
 	}	
 
@@ -120,7 +120,7 @@ Datum protobuf_get_bytes(PG_FUNCTION_ARGS) {
 				// if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error
 				PG_RETURN_NULL();
 			else {
-				uint32 length = decode_result.field_info[i].value_or_length;
+				uint64 length = decode_result.field_info[i].value_or_length;
 				uint8* buffer = palloc(VARHDRSZ + length);
 				SET_VARSIZE(buffer, VARHDRSZ + length);
 				memcpy(VARDATA(buffer), protobuf_data + decode_result.field_info[i].offset, length);
@@ -142,7 +142,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 		uint8 cont = (*protobuf_data) >> 7;
 		uint32 tag = ((*protobuf_data) >> 3) & 0x0F;
 		uint8 type = (*protobuf_data) & 0x07;
-		uint32 value_or_length = 0;
+		uint64 value_or_length = 0;
 		uint8 bytes_read, shift;
 
 		if((type != PROTOBUF_TYPE_INTEGER) && (type != PROTOBUF_TYPE_BYTES))
@@ -160,7 +160,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 		shift = 4;
 		bytes_read = 1;
 		while(cont) {
-			if(bytes_read == 4)
+			if(bytes_read == sizeof(tag))
 				ereport(ERROR,
 					(
 					 errcode(ERRCODE_INTERNAL_ERROR),
@@ -180,7 +180,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 					));
 	
 			cont = (*protobuf_data) >> 7;
-			tag = tag | (((*protobuf_data) & 0x7F) << shift);
+			tag = tag | (((uint32)((*protobuf_data) & 0x7F)) << shift);
 			shift += 7;
 			bytes_read++;
 
@@ -193,14 +193,14 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 		for(;;) {
 			uint8 temp;
 
-			if(bytes_read == 4)
+			if(bytes_read == (sizeof(value_or_length) + 1))
 				ereport(ERROR,
 					(
 					 errcode(ERRCODE_INTERNAL_ERROR),
 					 errmsg("Too long integer encoded in the protobuf data."),
 					 errdetail("protobuf_decode_internal() - value_or_length variable is "
-								"uint32 and your protobuf stores larger integers."),
-					 errhint("Sorry for that :( Patches are welcome!")
+								"uint64 and your protobuf stores larger integers."),
+					 errhint("That should have never happen. Your data is probably corrupted.")
 					));
 	
 			if(protobuf_size == 0)
@@ -217,7 +217,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 			protobuf_size--;
 			bytes_read++;
 
-			value_or_length = value_or_length | ( (((uint32)temp) & 0x7F) << shift);
+			value_or_length = value_or_length | ( (((uint64)temp) & 0x7F) << shift);
 			shift += 7;
 
 			if(!(temp & 0x80)) // 0b0xxxxxxx - the end of the integer
@@ -250,7 +250,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 					(
 					 errcode(ERRCODE_INTERNAL_ERROR),
 					 errmsg("Unexpected end of the protobuf data."),
-					 errdetail("protobuf_decode_internal() - %lu bytes left while trying to skip next %u bytes.",
+					 errdetail("protobuf_decode_internal() - %lu bytes left while trying to skip next %lu bytes.",
 						protobuf_size, value_or_length),
 					 errhint("Protobuf data is corrupted or there is a bug in pg_protobuf.")
 					));

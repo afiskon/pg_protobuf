@@ -7,7 +7,7 @@ CREATE FUNCTION protobuf_decode(bytea)
     LANGUAGE C STRICT IMMUTABLE;
 
 CREATE FUNCTION protobuf_get_integer(bytea, int)
-    RETURNS int
+    RETURNS bigint
     AS 'MODULE_PATHNAME'
     LANGUAGE C STRICT IMMUTABLE;
 
