@@ -23,7 +23,7 @@ PG_FUNCTION_INFO_V1(protobuf_get_bytes);
 typedef struct {
 	uint32 tag;
 	uint8 type;
-	uint64 value_or_length;
+	int64 value_or_length;
 	uint32 offset; // for PROTOBUF_TYPE_BYTES only
 } ProtobufFieldInfo;
 
@@ -53,7 +53,7 @@ Datum protobuf_decode(PG_FUNCTION_ARGS) {
 
 	for(i = 0; i < decode_result.nfields; i++) {
 		len = snprintf(temp_buff, sizeof(temp_buff),
-			"field tag = %u, field_type = %s, %s = %lu, offset = %u\n",
+			"field tag = %u, field_type = %s, %s = %ld, offset = %u\n",
 			decode_result.field_info[i].tag,
 			( decode_result.field_info[i].type == PROTOBUF_TYPE_INTEGER ? "integer" : "bytes"),
 			( decode_result.field_info[i].type == PROTOBUF_TYPE_INTEGER ? "value" : "length"),
@@ -120,7 +120,7 @@ Datum protobuf_get_bytes(PG_FUNCTION_ARGS) {
 				// if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error
 				PG_RETURN_NULL();
 			else {
-				uint64 length = decode_result.field_info[i].value_or_length;
+				uint64 length = (uint64)decode_result.field_info[i].value_or_length;
 				uint8* buffer = palloc(VARHDRSZ + length);
 				SET_VARSIZE(buffer, VARHDRSZ + length);
 				memcpy(VARDATA(buffer), protobuf_data + decode_result.field_info[i].offset, length);
@@ -143,7 +143,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 		uint32 tag = ((*protobuf_data) >> 3) & 0x0F;
 		uint8 type = (*protobuf_data) & 0x07;
 		uint64 value_or_length = 0;
-		uint8 bytes_read, shift;
+		uint8 shift;
 
 		if((type != PROTOBUF_TYPE_INTEGER) && (type != PROTOBUF_TYPE_BYTES))
 			ereport(ERROR,
@@ -158,9 +158,8 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 		protobuf_size--;
 
 		shift = 4;
-		bytes_read = 1;
 		while(cont) {
-			if(bytes_read == sizeof(tag))
+			if((shift / 8) >= sizeof(tag))
 				ereport(ERROR,
 					(
 					 errcode(ERRCODE_INTERNAL_ERROR),
@@ -182,18 +181,16 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 			cont = (*protobuf_data) >> 7;
 			tag = tag | (((uint32)((*protobuf_data) & 0x7F)) << shift);
 			shift += 7;
-			bytes_read++;
 
 			protobuf_data++;
 			protobuf_size--;
 		}
 
 		shift = 0;
-		bytes_read = 0;
 		for(;;) {
 			uint8 temp;
 
-			if(bytes_read == (sizeof(value_or_length) + 1))
+			if((shift / 8) >= sizeof(value_or_length))
 				ereport(ERROR,
 					(
 					 errcode(ERRCODE_INTERNAL_ERROR),
@@ -215,7 +212,6 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 			temp = *protobuf_data;
 			protobuf_data++;
 			protobuf_size--;
-			bytes_read++;
 
 			value_or_length = value_or_length | ( (((uint64)temp) & 0x7F) << shift);
 			shift += 7;
@@ -236,7 +232,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 
 		result->field_info[result->nfields].tag = tag;
 		result->field_info[result->nfields].type = type;
-		result->field_info[result->nfields].value_or_length = value_or_length;
+		result->field_info[result->nfields].value_or_length = (int64)value_or_length;
 		if(type == PROTOBUF_TYPE_INTEGER)
 			result->field_info[result->nfields].offset = 0;
 		else
