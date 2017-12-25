@@ -52,4 +52,8 @@ SELECT protobuf_get_integer(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f
 
 SELECT protobuf_get_integer(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f', 3);
 
+SELECT protobuf_get_boolean(E'\\x0a03656178107b18c8032202100f', 6);
+
+SELECT protobuf_get_boolean(E'\\x0a07616669736b6f6e10191880082a060a02000110643001', 6);
+
 DROP EXTENSION pg_protobuf;

@@ -21,3 +21,9 @@ BEGIN
 	RETURN convert_from(protobuf_get_bytes(data, tag), 'utf-8');
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
+
+CREATE FUNCTION protobuf_get_boolean(data bytea, tag int) RETURNS boolean AS $$
+BEGIN
+	RETURN coalesce(protobuf_get_integer(data, tag), 0) = 1;
+END
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
