@@ -4,6 +4,7 @@
 #include <port.h>
 
 void protobuf_decode_type_and_tag(ProtobufDecodeCtx* ctx, uint8* type_res, uint32* tag_res);
+uint64 protobuf_decode_value_or_length(ProtobufDecodeCtx* ctx);
 
 /* Decode type and tag */
 void protobuf_decode_type_and_tag(ProtobufDecodeCtx* ctx, uint8* type_res, uint32* tag_res) {
@@ -45,6 +46,36 @@ void protobuf_decode_type_and_tag(ProtobufDecodeCtx* ctx, uint8* type_res, uint3
 	*tag_res = tag;
 }
 
+/* Decode value_or_length (int32, uint64, string length, etc) */
+uint64 protobuf_decode_value_or_length(ProtobufDecodeCtx* ctx) {
+	uint64 value_or_length = 0;
+	uint8 shift = 0;
+	uint8 temp;
+
+	for(;;) {
+		if((shift / 8) >= sizeof(value_or_length))
+			ereport(ERROR,
+				(
+				 errcode(ERRCODE_INTERNAL_ERROR),
+				 errmsg("Too long integer encoded in the protobuf data."),
+				 errdetail("protobuf_decode_internal() - value_or_length variable is "
+							"uint64 and your protobuf stores larger integers."),
+				 errhint("That should have never happen. Your data is probably corrupted.")
+				));
+
+		temp = *ctx->protobuf_data;
+		protobuf_decode_ctx_shift(ctx, 1);
+
+		value_or_length = value_or_length | ( (((uint64)temp) & 0x7F) << shift);
+		shift += 7;
+
+		if(!(temp & 0x80)) // 0b0xxxxxxx - the end of the integer
+			break;
+	}
+
+	return value_or_length;
+}
+
 /* Decode Protobuf structure. */
 void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, ProtobufDecodeResult* result) {
 	ProtobufDecodeCtx* ctx;
@@ -56,36 +87,13 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 	while(ctx->protobuf_size > 0) {
 		uint8 type;
 		uint32 tag;
-		uint8 shift;
-		uint64 value_or_length = 0;
+		uint64 value_or_length;
 
 		/* Decode type and tag */
 		protobuf_decode_type_and_tag(ctx, &type, &tag);
 
-		/* Read value_or_length */
-		shift = 0;
-		for(;;) {
-			uint8 temp;
-
-			if((shift / 8) >= sizeof(value_or_length))
-				ereport(ERROR,
-					(
-					 errcode(ERRCODE_INTERNAL_ERROR),
-					 errmsg("Too long integer encoded in the protobuf data."),
-					 errdetail("protobuf_decode_internal() - value_or_length variable is "
-								"uint64 and your protobuf stores larger integers."),
-					 errhint("That should have never happen. Your data is probably corrupted.")
-					));
-	
-			temp = *ctx->protobuf_data;
-			protobuf_decode_ctx_shift(ctx, 1);
-
-			value_or_length = value_or_length | ( (((uint64)temp) & 0x7F) << shift);
-			shift += 7;
-
-			if(!(temp & 0x80)) // 0b0xxxxxxx - the end of the integer
-				break;
-		}
+		/* Decode value_or_length */
+		value_or_length = protobuf_decode_value_or_length(ctx);
 
 		if(result->nfields == PROTOBUF_RESULT_MAX_FIELDS)
 			ereport(ERROR,
