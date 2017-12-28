@@ -98,6 +98,13 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 			/* Decode int32, uint64, etc */
 			value_or_length = protobuf_decode_value_or_length(ctx);
 			break;
+		case PROTOBUF_TYPE_FIXED64:
+			/* Decode fixed64 */
+			if(ctx->protobuf_size >= sizeof(uint64))
+				value_or_length = *((int64*)ctx->protobuf_data);
+			/* Will throw an error if the previous `if` condition failed */
+			protobuf_decode_ctx_shift(ctx, sizeof(int64));
+			break;
 		case PROTOBUF_TYPE_BYTES:
 			/* Decode string length */
 			value_or_length = protobuf_decode_value_or_length(ctx);
@@ -110,7 +117,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 			/* Decode fixed32 */
 			if(ctx->protobuf_size >= sizeof(uint32))
 				value_or_length = (int64)(*((uint32*)ctx->protobuf_data));
-			/* Will throw an error if the previous if condition failed */
+			/* Will throw an error if the previous `if` condition failed */
 			protobuf_decode_ctx_shift(ctx, sizeof(uint32));
 			break;
 		default:

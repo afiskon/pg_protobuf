@@ -36,6 +36,14 @@ Datum protobuf_decode(PG_FUNCTION_ARGS) {
 				decode_result.field_info[i].tag,
 				decode_result.field_info[i].value_or_length);
 			break;
+		case PROTOBUF_TYPE_FIXED64:
+			len = snprintf(temp_buff, sizeof(temp_buff),
+				"type = fixed64, tag = %u, int value = %ld, float value = %.02f\n",
+				decode_result.field_info[i].tag,
+				decode_result.field_info[i].value_or_length,
+				*(double*)&decode_result.field_info[i].value_or_length);
+			break;
+
 		case PROTOBUF_TYPE_BYTES:
 			len = snprintf(temp_buff, sizeof(temp_buff),
 				"type = bytes, tag = %u, length = %ld, offset = %u\n",
@@ -45,9 +53,10 @@ Datum protobuf_decode(PG_FUNCTION_ARGS) {
 			break;
 		case PROTOBUF_TYPE_FIXED32:
 			len = snprintf(temp_buff, sizeof(temp_buff),
-				"type = fixed32, tag = %u, value = %d\n",
+				"type = fixed32, tag = %u, int value = %d, float value = %.02f\n",
 				decode_result.field_info[i].tag,
-				(int32)decode_result.field_info[i].value_or_length);
+				(int32)decode_result.field_info[i].value_or_length,
+				*(float*)&decode_result.field_info[i].value_or_length);
 			break;
 		default:
 			ereport(ERROR,

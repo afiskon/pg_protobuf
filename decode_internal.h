@@ -5,6 +5,7 @@
 #include <port.h>
 
 #define PROTOBUF_TYPE_INTEGER 0
+#define PROTOBUF_TYPE_FIXED64 1
 #define PROTOBUF_TYPE_BYTES   2
 #define PROTOBUF_TYPE_FIXED32 5
 
