@@ -38,6 +38,7 @@ typedef struct {
 } ProtobufDecodeResult;
 
 void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, ProtobufDecodeResult* result);
+void protobuf_decode_shift(ProtobufDecodeCtx* ctx, uint64 bytes);
 
 // protobuf -> cstring
 Datum protobuf_decode(PG_FUNCTION_ARGS) {
@@ -138,6 +139,22 @@ Datum protobuf_get_bytes(PG_FUNCTION_ARGS) {
 	PG_RETURN_NULL();
 }
 
+/* Shift `ProtobufDecodeCtx` to `bytes` bytes */
+void protobuf_decode_shift(ProtobufDecodeCtx* ctx, uint64 bytes) {
+	if(ctx->protobuf_size < bytes)
+		ereport(ERROR,
+			(
+			 errcode(ERRCODE_INTERNAL_ERROR),
+			 errmsg("Unexpected end of the protobuf data."),
+			 errdetail("protobuf_decode_shift() - %lu bytes left while trying to skip next %lu bytes.",
+				ctx->protobuf_size, bytes),
+			 errhint("Protobuf data is corrupted or there is a bug in pg_protobuf.")
+			));
+
+	ctx->protobuf_data += bytes;
+	ctx->protobuf_size -= bytes;
+}
+
 // decode protobuf structure
 void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, ProtobufDecodeResult* result) {
 	Size protobuf_orig_size = protobuf_size; // TODO: make offset a part of ProtobufDecodeCtx
@@ -165,8 +182,8 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 				 errhint("Sorry for that :( Patches are welcome!")
 				));
 
-		ctx->protobuf_data++;
-		ctx->protobuf_size--;
+
+		protobuf_decode_shift(ctx, 1);
 
 		/* Read the tag */
 		shift = 4;
@@ -184,18 +201,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 			cont = (*(ctx->protobuf_data)) >> 7;
 			tag = tag | (((uint32)((*(ctx->protobuf_data)) & 0x7F)) << shift);
 			shift += 7;
-
-			if(ctx->protobuf_size == 0)
-				ereport(ERROR,
-					(
-					 errcode(ERRCODE_INTERNAL_ERROR),
-					 errmsg("Unexpected end of the protobuf data."),
-					 errdetail("protobuf_decode_internal() - data ended while still reading tag variable."),
-					 errhint("Protobuf data is corrupted or there is a bug in pg_protobuf.")
-					));
-	
-			ctx->protobuf_data++;
-			ctx->protobuf_size--;
+			protobuf_decode_shift(ctx, 1);
 		}
 
 		/* Read value_or_length */
@@ -214,18 +220,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 					));
 	
 			temp = *ctx->protobuf_data;
-
-			if(ctx->protobuf_size == 0)
-				ereport(ERROR,
-					(
-					 errcode(ERRCODE_INTERNAL_ERROR),
-					 errmsg("Unexpected end of the protobuf data."),
-					 errdetail("protobuf_decode_internal() - data ended while still reading value_or_length variable."),
-					 errhint("Protobuf data is corrupted or there is a bug in pg_protobuf.")
-					));
-		
-			ctx->protobuf_data++;
-			ctx->protobuf_size--;
+			protobuf_decode_shift(ctx, 1);
 
 			value_or_length = value_or_length | ( (((uint64)temp) & 0x7F) << shift);
 			shift += 7;
@@ -254,21 +249,8 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 			result->field_info[result->nfields].offset = 0;
 		result->nfields++;
 
-		if(type == PROTOBUF_TYPE_BYTES) {
-			// skip next value_or_length bytes
-			if(ctx->protobuf_size < value_or_length)
-				ereport(ERROR,
-					(
-					 errcode(ERRCODE_INTERNAL_ERROR),
-					 errmsg("Unexpected end of the protobuf data."),
-					 errdetail("protobuf_decode_internal() - %lu bytes left while trying to skip next %lu bytes.",
-						ctx->protobuf_size, value_or_length),
-					 errhint("Protobuf data is corrupted or there is a bug in pg_protobuf.")
-					));
-
-			ctx->protobuf_data += value_or_length;
-			ctx->protobuf_size -= value_or_length;
-		} // type == PROTOBUF_TYPE_BYTES
+		if(type == PROTOBUF_TYPE_BYTES)
+			protobuf_decode_shift(ctx, value_or_length);
 	}
 }
 
