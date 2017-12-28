@@ -21,6 +21,16 @@ CREATE FUNCTION protobuf_get_float(bytea, int)
     AS 'MODULE_PATHNAME'
     LANGUAGE C STRICT IMMUTABLE;
 
+CREATE FUNCTION protobuf_get_sfixed64(bytea, int)
+    RETURNS int
+    AS 'MODULE_PATHNAME'
+    LANGUAGE C STRICT IMMUTABLE;
+
+CREATE FUNCTION protobuf_get_double(bytea, int)
+    RETURNS double precision
+    AS 'MODULE_PATHNAME'
+    LANGUAGE C STRICT IMMUTABLE;
+
 CREATE FUNCTION protobuf_get_bytes(bytea, int)
     RETURNS bytea
     AS 'MODULE_PATHNAME'

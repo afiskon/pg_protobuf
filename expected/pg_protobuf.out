@@ -193,6 +193,30 @@ SELECT protobuf_get_float(E'\\x0a036561781500004a421d333380c32202100f', 3);
              -256.4
 (1 row)
 
+SELECT protobuf_get_sfixed64(E'\\x0a036561781132000000000000001966666666660670c02202100f', 2);
+ protobuf_get_sfixed64 
+-----------------------
+                    50
+(1 row)
+
+SELECT protobuf_get_sfixed64(E'\\x0a07616669736b6f6e11e7ffffffffffffff1933333333330390402a060a0200011064', 2);
+ protobuf_get_sfixed64 
+-----------------------
+                   -25
+(1 row)
+
+SELECT protobuf_get_double(E'\\x0a036561781132000000000000001966666666660670c02202100f', 3);
+ protobuf_get_double 
+---------------------
+              -256.4
+(1 row)
+
+SELECT protobuf_get_double(E'\\x0a07616669736b6f6e11e7ffffffffffffff1933333333330390402a060a0200011064', 3);
+ protobuf_get_double 
+---------------------
+              1024.8
+(1 row)
+
 SELECT protobuf_get_bool(E'\\x0a03656178107b18c8032202100f', 6);
  protobuf_get_bool 
 -------------------
