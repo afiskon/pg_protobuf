@@ -133,10 +133,8 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 	Size protobuf_orig_size = protobuf_size; // TODO: make offset a part of ProtobufDecodeCtx
 	ProtobufDecodeCtx* ctx;
 	ProtobufDecodeCtx decode_ctx;
-
-	decode_ctx.protobuf_data = protobuf_data;
-	decode_ctx.protobuf_size = protobuf_size;
-	ctx = &decode_ctx; // will be passed as argument to procedures
+	ctx = &decode_ctx;
+	protobuf_decode_ctx_init(ctx, protobuf_data, protobuf_size);
 	result->nfields = 0;
 
 	while(ctx->protobuf_size > 0) {

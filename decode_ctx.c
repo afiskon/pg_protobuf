@@ -2,6 +2,11 @@
 #include <postgres.h>
 #include <port.h>
 
+void protobuf_decode_ctx_init(ProtobufDecodeCtx* ctx, const uint8* protobuf_data, Size protobuf_size) {
+	ctx->protobuf_data = protobuf_data;
+	ctx->protobuf_size = protobuf_size;
+}
+
 /* Shift `ProtobufDecodeCtx` to `bytes` bytes */
 void protobuf_decode_ctx_shift(ProtobufDecodeCtx* ctx, uint64 bytes) {
 	if(ctx->protobuf_size < bytes)
