@@ -1,5 +1,6 @@
 EXTENSION = pg_protobuf
-MODULES = pg_protobuf
+MODULE_big = pg_protobuf
+OBJS = pg_protobuf.o decode_ctx.o
 DATA = pg_protobuf--1.0.sql
 REGRESS = pg_protobuf
 
