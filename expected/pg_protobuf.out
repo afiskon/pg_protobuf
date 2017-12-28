@@ -10,22 +10,22 @@ ERROR:  Usupported protobuf type.
 DETAIL:  pg_protobuf doesn't support type with id 7 yet.
 HINT:  Sorry for that :( Patches are welcome!
 SELECT protobuf_decode(E'\\x0a0365617810321880022202100f' :: bytea);
-                       protobuf_decode                        
---------------------------------------------------------------
- field tag = 1, field_type = bytes, length = 3, offset = 2   +
- field tag = 2, field_type = integer, value = 50, offset = 0 +
- field tag = 3, field_type = integer, value = 256, offset = 0+
- field tag = 4, field_type = bytes, length = 2, offset = 12  +
+                protobuf_decode                 
+------------------------------------------------
+ type = bytes, tag = 1, length = 3, offset = 2 +
+ type = integer, tag = 2, value = 50           +
+ type = integer, tag = 3, value = 256          +
+ type = bytes, tag = 4, length = 2, offset = 12+
  
 (1 row)
 
 SELECT protobuf_decode(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea);
-                        protobuf_decode                        
----------------------------------------------------------------
- field tag = 1, field_type = bytes, length = 7, offset = 2    +
- field tag = 2, field_type = integer, value = 25, offset = 0  +
- field tag = 3, field_type = integer, value = 1024, offset = 0+
- field tag = 5, field_type = bytes, length = 6, offset = 16   +
+                protobuf_decode                 
+------------------------------------------------
+ type = bytes, tag = 1, length = 7, offset = 2 +
+ type = integer, tag = 2, value = 25           +
+ type = integer, tag = 3, value = 1024         +
+ type = bytes, tag = 5, length = 6, offset = 16+
  
 (1 row)
 
@@ -132,12 +132,12 @@ SELECT length(protobuf_get_string(E'\\x10321880022202100f82208e02' || convert_to
 (1 row)
 
 SELECT protobuf_decode(E'\\x0a036561781088ef99abc5e88c91111880022202100f');
-                               protobuf_decode                                
-------------------------------------------------------------------------------
- field tag = 1, field_type = bytes, length = 3, offset = 2                   +
- field tag = 2, field_type = integer, value = 1234605616436508552, offset = 0+
- field tag = 3, field_type = integer, value = 256, offset = 0                +
- field tag = 4, field_type = bytes, length = 2, offset = 20                  +
+                   protobuf_decode                    
+------------------------------------------------------
+ type = bytes, tag = 1, length = 3, offset = 2       +
+ type = integer, tag = 2, value = 1234605616436508552+
+ type = integer, tag = 3, value = 256                +
+ type = bytes, tag = 4, length = 2, offset = 20      +
  
 (1 row)
 
@@ -148,12 +148,12 @@ SELECT protobuf_get_integer(E'\\x0a036561781088ef99abc5e88c91111880022202100f', 
 (1 row)
 
 SELECT protobuf_decode(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f');
-                                protobuf_decode                                
--------------------------------------------------------------------------------
- field tag = 1, field_type = bytes, length = 3, offset = 2                    +
- field tag = 2, field_type = integer, value = -123456, offset = 0             +
- field tag = 3, field_type = integer, value = -1234605616436508552, offset = 0+
- field tag = 4, field_type = bytes, length = 2, offset = 29                   +
+                    protobuf_decode                    
+-------------------------------------------------------
+ type = bytes, tag = 1, length = 3, offset = 2        +
+ type = integer, tag = 2, value = -123456             +
+ type = integer, tag = 3, value = -1234605616436508552+
+ type = bytes, tag = 4, length = 2, offset = 29       +
  
 (1 row)
 

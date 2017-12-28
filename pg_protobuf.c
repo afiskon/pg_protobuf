@@ -13,7 +13,7 @@ PG_FUNCTION_INFO_V1(protobuf_get_bytes);
 Datum protobuf_decode(PG_FUNCTION_ARGS) {
 	char temp_buff[128];
 	uint32 i;
-	int len;
+	int len = -1;
 
 	bytea* protobuf_bytea = PG_GETARG_BYTEA_P(0);
 	Size protobuf_size = VARSIZE(protobuf_bytea) - VARHDRSZ;
@@ -27,20 +27,42 @@ Datum protobuf_decode(PG_FUNCTION_ARGS) {
 	protobuf_decode_internal(protobuf_data, protobuf_size, &decode_result);
 
 	for(i = 0; i < decode_result.nfields; i++) {
-		len = snprintf(temp_buff, sizeof(temp_buff),
-			"field tag = %u, field_type = %s, %s = %ld, offset = %u\n",
-			decode_result.field_info[i].tag,
-			( decode_result.field_info[i].type == PROTOBUF_TYPE_INTEGER ? "integer" : "bytes"),
-			( decode_result.field_info[i].type == PROTOBUF_TYPE_INTEGER ? "value" : "length"),
-			decode_result.field_info[i].value_or_length,
-			decode_result.field_info[i].offset);
+		switch(decode_result.field_info[i].type) {
+		case PROTOBUF_TYPE_INTEGER:
+			len = snprintf(temp_buff, sizeof(temp_buff),
+				"type = integer, tag = %u, value = %ld\n",
+				decode_result.field_info[i].tag,
+				decode_result.field_info[i].value_or_length);
+			break;
+		case PROTOBUF_TYPE_BYTES:
+			len = snprintf(temp_buff, sizeof(temp_buff),
+				"type = bytes, tag = %u, length = %ld, offset = %u\n",
+				decode_result.field_info[i].tag,
+				decode_result.field_info[i].value_or_length,
+				decode_result.field_info[i].offset);
+			break;
+		case PROTOBUF_TYPE_FIXED32:
+			len = snprintf(temp_buff, sizeof(temp_buff),
+				"type = fixed32, tag = %u, value = %d\n",
+				decode_result.field_info[i].tag,
+				(int32)decode_result.field_info[i].value_or_length);
+			break;
+		default:
+			ereport(ERROR,
+				(
+				 errcode(ERRCODE_INTERNAL_ERROR),
+				 errmsg("Unable to format protobuf data."),
+				 errdetail("protobuf_decode() - unable to display type with id %u.", decode_result.field_info[i].type),
+				 errhint("Most likely this is a bug in pg_protobuf. Please contact the author.")
+				));
+		}
 
 		if(len < 0)
 			ereport(ERROR,
 				(
 				 errcode(ERRCODE_INTERNAL_ERROR),
 				 errmsg("Unable to format protobuf data."),
-				 errdetail("protobuf_to_string() - snprintf() returned %d.", len),
+				 errdetail("protobuf_decode() - snprintf() returned %d.", len),
 				 errhint("Most likely this is a bug in pg_protobuf. Please contact the author.")
 				));
 

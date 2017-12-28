@@ -4,7 +4,7 @@
 #include <port.h>
 
 void protobuf_decode_type_and_tag(ProtobufDecodeCtx* ctx, uint8* type_res, uint32* tag_res);
-uint64 protobuf_decode_value_or_length(ProtobufDecodeCtx* ctx);
+int64 protobuf_decode_value_or_length(ProtobufDecodeCtx* ctx);
 
 /* Decode type and tag */
 void protobuf_decode_type_and_tag(ProtobufDecodeCtx* ctx, uint8* type_res, uint32* tag_res) {
@@ -38,7 +38,7 @@ void protobuf_decode_type_and_tag(ProtobufDecodeCtx* ctx, uint8* type_res, uint3
 }
 
 /* Decode value_or_length (int32, uint64, string length, etc) */
-uint64 protobuf_decode_value_or_length(ProtobufDecodeCtx* ctx) {
+int64 protobuf_decode_value_or_length(ProtobufDecodeCtx* ctx) {
 	uint64 value_or_length = 0;
 	uint8 shift = 0;
 	uint8 temp;
@@ -64,7 +64,7 @@ uint64 protobuf_decode_value_or_length(ProtobufDecodeCtx* ctx) {
 			break;
 	}
 
-	return value_or_length;
+	return (int64)value_or_length;
 }
 
 /* Decode Protobuf structure. */
@@ -78,7 +78,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 	while(ctx->protobuf_size > 0) {
 		uint8 type;
 		uint32 tag, offset = 0;
-		uint64 value_or_length;
+		int64 value_or_length = 0;
 
 		if(result->nfields == PROTOBUF_RESULT_MAX_FIELDS)
 			ereport(ERROR,
@@ -104,7 +104,14 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 			/* Calculate string offset */
 			offset = protobuf_decode_ctx_offset(ctx);
 			/* Skip `length` bytes */
-			protobuf_decode_ctx_shift(ctx, value_or_length);
+			protobuf_decode_ctx_shift(ctx, (uint64)value_or_length);
+			break;
+		case PROTOBUF_TYPE_FIXED32:
+			/* Decode fixed32 */
+			if(ctx->protobuf_size >= sizeof(uint32))
+				value_or_length = (int64)(*((uint32*)ctx->protobuf_data));
+			/* Will throw an error if the previous if condition failed */
+			protobuf_decode_ctx_shift(ctx, sizeof(uint32));
 			break;
 		default:
 			ereport(ERROR,
@@ -119,7 +126,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 		/* Save the field */
 		result->field_info[result->nfields].tag = tag;
 		result->field_info[result->nfields].type = type;
-		result->field_info[result->nfields].value_or_length = (int64)value_or_length;
+		result->field_info[result->nfields].value_or_length = value_or_length;
 		result->field_info[result->nfields].offset = offset;
 		result->nfields++;
 	}
