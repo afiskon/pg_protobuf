@@ -13,15 +13,6 @@ void protobuf_decode_type_and_tag(ProtobufDecodeCtx* ctx, uint8* type_res, uint3
 	uint8 type = (*(ctx->protobuf_data)) & 0x07;
 	uint8 shift;
 
-	if((type != PROTOBUF_TYPE_INTEGER) && (type != PROTOBUF_TYPE_BYTES))
-		ereport(ERROR,
-			(
-			 errcode(ERRCODE_INTERNAL_ERROR),
-			 errmsg("Usupported protobuf type."),
-			 errdetail("protobuf_decode_type_and_tag() doesn't support type %u yet.", type),
-			 errhint("Sorry for that :( Patches are welcome!")
-			));
-
 	protobuf_decode_ctx_shift(ctx, 1);
 
 	shift = 4;
@@ -86,14 +77,8 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 
 	while(ctx->protobuf_size > 0) {
 		uint8 type;
-		uint32 tag;
+		uint32 tag, offset = 0;
 		uint64 value_or_length;
-
-		/* Decode type and tag */
-		protobuf_decode_type_and_tag(ctx, &type, &tag);
-
-		/* Decode value_or_length */
-		value_or_length = protobuf_decode_value_or_length(ctx);
 
 		if(result->nfields == PROTOBUF_RESULT_MAX_FIELDS)
 			ereport(ERROR,
@@ -105,16 +90,37 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 						"Also it's probably worth notifying the author regarding this issue.")
 				));
 
+		/* Decode type and tag */
+		protobuf_decode_type_and_tag(ctx, &type, &tag);
+
+		switch(type) {
+		case PROTOBUF_TYPE_INTEGER:
+			/* Decode int32, uint64, etc */
+			value_or_length = protobuf_decode_value_or_length(ctx);
+			break;
+		case PROTOBUF_TYPE_BYTES:
+			/* Decode string length */
+			value_or_length = protobuf_decode_value_or_length(ctx);
+			/* Calculate string offset */
+			offset = protobuf_decode_ctx_offset(ctx);
+			/* Skip `length` bytes */
+			protobuf_decode_ctx_shift(ctx, value_or_length);
+			break;
+		default:
+			ereport(ERROR,
+				(
+				 errcode(ERRCODE_INTERNAL_ERROR),
+				 errmsg("Usupported protobuf type."),
+				 errdetail("pg_protobuf doesn't support type with id %u yet.", type),
+				 errhint("Sorry for that :( Patches are welcome!")
+				));
+		}
+
 		/* Save the field */
 		result->field_info[result->nfields].tag = tag;
 		result->field_info[result->nfields].type = type;
 		result->field_info[result->nfields].value_or_length = (int64)value_or_length;
-		if(type == PROTOBUF_TYPE_BYTES) {
-			result->field_info[result->nfields].offset = protobuf_decode_ctx_offset(ctx);
-			protobuf_decode_ctx_shift(ctx, value_or_length);
-		} else
-			result->field_info[result->nfields].offset = 0;
-
+		result->field_info[result->nfields].offset = offset;
 		result->nfields++;
 	}
 }
