@@ -232,13 +232,14 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 						"Also it's probably worth notifying the author regarding this issue.")
 				));
 
+		/* Save the field */
 		result->field_info[result->nfields].tag = tag;
 		result->field_info[result->nfields].type = type;
 		result->field_info[result->nfields].value_or_length = (int64)value_or_length;
-		if(type == PROTOBUF_TYPE_INTEGER)
-			result->field_info[result->nfields].offset = 0;
-		else
+		if(type == PROTOBUF_TYPE_BYTES)
 			result->field_info[result->nfields].offset = protobuf_orig_size - protobuf_size;
+		else
+			result->field_info[result->nfields].offset = 0;
 		result->nfields++;
 
 		if(type == PROTOBUF_TYPE_BYTES) {
