@@ -3,6 +3,48 @@
 #include <postgres.h>
 #include <port.h>
 
+void protobuf_decode_type_and_tag(ProtobufDecodeCtx* ctx, uint8* type_res, uint32* tag_res);
+
+/* Decode type and tag */
+void protobuf_decode_type_and_tag(ProtobufDecodeCtx* ctx, uint8* type_res, uint32* tag_res) {
+	uint8 cont = (*(ctx->protobuf_data)) >> 7;
+	uint32 tag = ((*(ctx->protobuf_data)) >> 3) & 0x0F;
+	uint8 type = (*(ctx->protobuf_data)) & 0x07;
+	uint8 shift;
+
+	if((type != PROTOBUF_TYPE_INTEGER) && (type != PROTOBUF_TYPE_BYTES))
+		ereport(ERROR,
+			(
+			 errcode(ERRCODE_INTERNAL_ERROR),
+			 errmsg("Usupported protobuf type."),
+			 errdetail("protobuf_decode_type_and_tag() doesn't support type %u yet.", type),
+			 errhint("Sorry for that :( Patches are welcome!")
+			));
+
+	protobuf_decode_ctx_shift(ctx, 1);
+
+	shift = 4;
+	while(cont) {
+		if((shift / 8) >= sizeof(tag))
+			ereport(ERROR,
+				(
+				 errcode(ERRCODE_INTERNAL_ERROR),
+				 errmsg("Too long tag encoded in the protobuf data."),
+				 errdetail("protobuf_decode_internal() - tag variable is "
+							"uint32 and your protobuf stores larger tags."),
+				 errhint("Sorry for that :( Patches are welcome!")
+				));
+
+		cont = (*(ctx->protobuf_data)) >> 7;
+		tag = tag | (((uint32)((*(ctx->protobuf_data)) & 0x7F)) << shift);
+		shift += 7;
+		protobuf_decode_ctx_shift(ctx, 1);
+	}
+
+	*type_res = type;
+	*tag_res = tag;
+}
+
 /* Decode Protobuf structure. */
 void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, ProtobufDecodeResult* result) {
 	ProtobufDecodeCtx* ctx;
@@ -12,41 +54,13 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 	result->nfields = 0;
 
 	while(ctx->protobuf_size > 0) {
-		uint8 cont = (*(ctx->protobuf_data)) >> 7;
-		uint32 tag = ((*(ctx->protobuf_data)) >> 3) & 0x0F;
-		uint8 type = (*(ctx->protobuf_data)) & 0x07;
-		uint64 value_or_length = 0;
+		uint8 type;
+		uint32 tag;
 		uint8 shift;
+		uint64 value_or_length = 0;
 
-		if((type != PROTOBUF_TYPE_INTEGER) && (type != PROTOBUF_TYPE_BYTES))
-			ereport(ERROR,
-				(
-				 errcode(ERRCODE_INTERNAL_ERROR),
-				 errmsg("Usupported protobuf type."),
-				 errdetail("protobuf_decode_internal() doesn't support type %u yet.", type),
-				 errhint("Sorry for that :( Patches are welcome!")
-				));
-
-		protobuf_decode_ctx_shift(ctx, 1);
-
-		/* Read the tag */
-		shift = 4;
-		while(cont) {
-			if((shift / 8) >= sizeof(tag))
-				ereport(ERROR,
-					(
-					 errcode(ERRCODE_INTERNAL_ERROR),
-					 errmsg("Too long tag encoded in the protobuf data."),
-					 errdetail("protobuf_decode_internal() - tag variable is "
-								"uint32 and your protobuf stores larger tags."),
-					 errhint("Sorry for that :( Patches are welcome!")
-					));
-
-			cont = (*(ctx->protobuf_data)) >> 7;
-			tag = tag | (((uint32)((*(ctx->protobuf_data)) & 0x7F)) << shift);
-			shift += 7;
-			protobuf_decode_ctx_shift(ctx, 1);
-		}
+		/* Decode type and tag */
+		protobuf_decode_type_and_tag(ctx, &type, &tag);
 
 		/* Read value_or_length */
 		shift = 0;

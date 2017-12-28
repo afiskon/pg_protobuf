@@ -7,7 +7,7 @@ SELECT protobuf_decode(null);
 
 SELECT protobuf_decode('garbage' :: bytea);
 ERROR:  Usupported protobuf type.
-DETAIL:  protobuf_decode_internal() doesn't support type 7 yet.
+DETAIL:  protobuf_decode_type_and_tag() doesn't support type 7 yet.
 HINT:  Sorry for that :( Patches are welcome!
 SELECT protobuf_decode(E'\\x0a0365617810321880022202100f' :: bytea);
                        protobuf_decode                        
