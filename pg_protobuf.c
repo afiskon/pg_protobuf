@@ -157,6 +157,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 		protobuf_data++;
 		protobuf_size--;
 
+		/* Read the tag */
 		shift = 4;
 		while(cont) {
 			if((shift / 8) >= sizeof(tag))
@@ -186,6 +187,7 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 			protobuf_size--;
 		}
 
+		/* Read value_or_length */
 		shift = 0;
 		for(;;) {
 			uint8 temp;
