@@ -29,28 +29,28 @@ SELECT protobuf_decode(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: byt
  
 (1 row)
 
-SELECT protobuf_get_integer(null, 1);
- protobuf_get_integer 
-----------------------
-                     
+SELECT protobuf_get_int(null, 1);
+ protobuf_get_int 
+------------------
+                 
 (1 row)
 
-SELECT protobuf_get_integer(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 1);
- protobuf_get_integer 
-----------------------
-                     
+SELECT protobuf_get_int(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 1);
+ protobuf_get_int 
+------------------
+                 
 (1 row)
 
-SELECT protobuf_get_integer(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 2);
- protobuf_get_integer 
-----------------------
-                   25
+SELECT protobuf_get_int(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 2);
+ protobuf_get_int 
+------------------
+               25
 (1 row)
 
-SELECT protobuf_get_integer(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 3);
- protobuf_get_integer 
-----------------------
-                 1024
+SELECT protobuf_get_int(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 3);
+ protobuf_get_int 
+------------------
+             1024
 (1 row)
 
 SELECT protobuf_get_bytes(null, 1);
@@ -141,10 +141,10 @@ SELECT protobuf_decode(E'\\x0a036561781088ef99abc5e88c91111880022202100f');
  
 (1 row)
 
-SELECT protobuf_get_integer(E'\\x0a036561781088ef99abc5e88c91111880022202100f', 2);
- protobuf_get_integer 
-----------------------
-  1234605616436508552
+SELECT protobuf_get_int(E'\\x0a036561781088ef99abc5e88c91111880022202100f', 2);
+  protobuf_get_int   
+---------------------
+ 1234605616436508552
 (1 row)
 
 SELECT protobuf_decode(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f');
@@ -157,27 +157,39 @@ SELECT protobuf_decode(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee
  
 (1 row)
 
-SELECT protobuf_get_integer(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f', 2);
- protobuf_get_integer 
-----------------------
-              -123456
+SELECT protobuf_get_int(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f', 2);
+ protobuf_get_int 
+------------------
+          -123456
 (1 row)
 
-SELECT protobuf_get_integer(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f', 3);
- protobuf_get_integer 
+SELECT protobuf_get_int(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f', 3);
+   protobuf_get_int   
 ----------------------
  -1234605616436508552
 (1 row)
 
-SELECT protobuf_get_boolean(E'\\x0a03656178107b18c8032202100f', 6);
- protobuf_get_boolean 
-----------------------
+SELECT protobuf_get_sfixed32(E'\\x0a0365617815320000001d00ffffff2202100f', 2);
+ protobuf_get_sfixed32 
+-----------------------
+                    50
+(1 row)
+
+SELECT protobuf_get_sfixed32(E'\\x0a0365617815320000001d00ffffff2202100f', 3);
+ protobuf_get_sfixed32 
+-----------------------
+                  -256
+(1 row)
+
+SELECT protobuf_get_bool(E'\\x0a03656178107b18c8032202100f', 6);
+ protobuf_get_bool 
+-------------------
  f
 (1 row)
 
-SELECT protobuf_get_boolean(E'\\x0a07616669736b6f6e10191880082a060a02000110643001', 6);
- protobuf_get_boolean 
-----------------------
+SELECT protobuf_get_bool(E'\\x0a07616669736b6f6e10191880082a060a02000110643001', 6);
+ protobuf_get_bool 
+-------------------
  t
 (1 row)
 

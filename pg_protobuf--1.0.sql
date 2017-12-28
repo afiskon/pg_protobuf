@@ -6,8 +6,13 @@ CREATE FUNCTION protobuf_decode(bytea)
     AS 'MODULE_PATHNAME'
     LANGUAGE C STRICT IMMUTABLE;
 
-CREATE FUNCTION protobuf_get_integer(bytea, int)
+CREATE FUNCTION protobuf_get_int(bytea, int)
     RETURNS bigint
+    AS 'MODULE_PATHNAME'
+    LANGUAGE C STRICT IMMUTABLE;
+
+CREATE FUNCTION protobuf_get_sfixed32(bytea, int)
+    RETURNS int
     AS 'MODULE_PATHNAME'
     LANGUAGE C STRICT IMMUTABLE;
 
@@ -22,8 +27,8 @@ BEGIN
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
 
-CREATE FUNCTION protobuf_get_boolean(data bytea, tag int) RETURNS boolean AS $$
+CREATE FUNCTION protobuf_get_bool(data bytea, tag int) RETURNS boolean AS $$
 BEGIN
-	RETURN coalesce(protobuf_get_integer(data, tag), 0) = 1;
+	RETURN coalesce(protobuf_get_int(data, tag), 0) = 1;
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;

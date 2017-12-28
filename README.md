@@ -31,13 +31,13 @@ $$ language 'plpgsql' immutable;
 
 create function hero_hp(x bytea) returns text as $$
 begin
-return protobuf_get_integer(x, 2);
+return protobuf_get_int(x, 2);
 end
 $$ language 'plpgsql' immutable;
 
 create function hero_xp(x bytea) returns text as $$
 begin
-return protobuf_get_integer(x, 3);
+return protobuf_get_int(x, 3);
 end
 $$ language 'plpgsql' immutable;
 

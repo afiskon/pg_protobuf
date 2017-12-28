@@ -6,7 +6,8 @@
 PG_MODULE_MAGIC;
 
 PG_FUNCTION_INFO_V1(protobuf_decode);
-PG_FUNCTION_INFO_V1(protobuf_get_integer);
+PG_FUNCTION_INFO_V1(protobuf_get_int);
+PG_FUNCTION_INFO_V1(protobuf_get_sfixed32);
 PG_FUNCTION_INFO_V1(protobuf_get_bytes);
 
 /* protobuf -> cstring */
@@ -79,8 +80,8 @@ Datum protobuf_decode(PG_FUNCTION_ARGS) {
 	PG_RETURN_CSTRING((Datum)result_buff);
 }
 
-/* protobuf -> integer */
-Datum protobuf_get_integer(PG_FUNCTION_ARGS) {
+/* protobuf -> int32 / int64 / etc */
+Datum protobuf_get_int(PG_FUNCTION_ARGS) {
 	bytea* protobuf_bytea = PG_GETARG_BYTEA_P(0);
 	int32 i, tag = PG_GETARG_INT32(1);
 	Size protobuf_size = VARSIZE(protobuf_bytea) - VARHDRSZ;
@@ -96,6 +97,30 @@ Datum protobuf_get_integer(PG_FUNCTION_ARGS) {
 				PG_RETURN_NULL();
 
 			PG_RETURN_INT64((int64)decode_result.field_info[i].value_or_length);
+		}
+	}	
+
+	/* not found */
+	PG_RETURN_NULL();
+}
+
+/* protobuf -> sfixed32 */
+Datum protobuf_get_sfixed32(PG_FUNCTION_ARGS) {
+	bytea* protobuf_bytea = PG_GETARG_BYTEA_P(0);
+	int32 i, tag = PG_GETARG_INT32(1);
+	Size protobuf_size = VARSIZE(protobuf_bytea) - VARHDRSZ;
+	const uint8* protobuf_data = (const uint8*)VARDATA(protobuf_bytea);
+	ProtobufDecodeResult decode_result;
+
+	protobuf_decode_internal(protobuf_data, protobuf_size, &decode_result);
+
+	for(i = 0; i < decode_result.nfields; i++) {
+		if(decode_result.field_info[i].tag == tag) {
+			if(decode_result.field_info[i].type != PROTOBUF_TYPE_FIXED32)
+				/* if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error */
+				PG_RETURN_NULL();
+
+			PG_RETURN_INT32((int32)decode_result.field_info[i].value_or_length);
 		}
 	}	
 

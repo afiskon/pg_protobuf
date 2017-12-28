@@ -8,13 +8,13 @@ SELECT protobuf_decode(E'\\x0a0365617810321880022202100f' :: bytea);
 
 SELECT protobuf_decode(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea);
 
-SELECT protobuf_get_integer(null, 1);
+SELECT protobuf_get_int(null, 1);
 
-SELECT protobuf_get_integer(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 1);
+SELECT protobuf_get_int(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 1);
 
-SELECT protobuf_get_integer(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 2);
+SELECT protobuf_get_int(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 2);
 
-SELECT protobuf_get_integer(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 3);
+SELECT protobuf_get_int(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 3);
 
 SELECT protobuf_get_bytes(null, 1);
 
@@ -44,16 +44,20 @@ SELECT length(protobuf_get_string(E'\\x10321880022202100f82208e02' || convert_to
 
 SELECT protobuf_decode(E'\\x0a036561781088ef99abc5e88c91111880022202100f');
 
-SELECT protobuf_get_integer(E'\\x0a036561781088ef99abc5e88c91111880022202100f', 2);
+SELECT protobuf_get_int(E'\\x0a036561781088ef99abc5e88c91111880022202100f', 2);
 
 SELECT protobuf_decode(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f');
 
-SELECT protobuf_get_integer(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f', 2);
+SELECT protobuf_get_int(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f', 2);
 
-SELECT protobuf_get_integer(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f', 3);
+SELECT protobuf_get_int(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f', 3);
 
-SELECT protobuf_get_boolean(E'\\x0a03656178107b18c8032202100f', 6);
+SELECT protobuf_get_sfixed32(E'\\x0a0365617815320000001d00ffffff2202100f', 2);
 
-SELECT protobuf_get_boolean(E'\\x0a07616669736b6f6e10191880082a060a02000110643001', 6);
+SELECT protobuf_get_sfixed32(E'\\x0a0365617815320000001d00ffffff2202100f', 3);
+
+SELECT protobuf_get_bool(E'\\x0a03656178107b18c8032202100f', 6);
+
+SELECT protobuf_get_bool(E'\\x0a07616669736b6f6e10191880082a060a02000110643001', 6);
 
 DROP EXTENSION pg_protobuf;
