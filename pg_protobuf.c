@@ -28,6 +28,11 @@ typedef struct {
 } ProtobufFieldInfo;
 
 typedef struct {
+	const uint8* protobuf_data;
+	Size protobuf_size;
+} ProtobufDecodeCtx; // for internal usage
+
+typedef struct {
 	uint32 nfields;
 	ProtobufFieldInfo field_info[PROTOBUF_RESULT_MAX_FIELDS];
 } ProtobufDecodeResult;
@@ -135,13 +140,19 @@ Datum protobuf_get_bytes(PG_FUNCTION_ARGS) {
 
 // decode protobuf structure
 void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, ProtobufDecodeResult* result) {
-	Size protobuf_orig_size = protobuf_size;
+	Size protobuf_orig_size = protobuf_size; // TODO: make offset a part of ProtobufDecodeCtx
+	ProtobufDecodeCtx* ctx;
+	ProtobufDecodeCtx decode_ctx;
+
+	decode_ctx.protobuf_data = protobuf_data;
+	decode_ctx.protobuf_size = protobuf_size;
+	ctx = &decode_ctx; // will be passed as argument to procedures
 	result->nfields = 0;
 
-	while(protobuf_size > 0) {
-		uint8 cont = (*protobuf_data) >> 7;
-		uint32 tag = ((*protobuf_data) >> 3) & 0x0F;
-		uint8 type = (*protobuf_data) & 0x07;
+	while(ctx->protobuf_size > 0) {
+		uint8 cont = (*(ctx->protobuf_data)) >> 7;
+		uint32 tag = ((*(ctx->protobuf_data)) >> 3) & 0x0F;
+		uint8 type = (*(ctx->protobuf_data)) & 0x07;
 		uint64 value_or_length = 0;
 		uint8 shift;
 
@@ -154,8 +165,8 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 				 errhint("Sorry for that :( Patches are welcome!")
 				));
 
-		protobuf_data++;
-		protobuf_size--;
+		ctx->protobuf_data++;
+		ctx->protobuf_size--;
 
 		/* Read the tag */
 		shift = 4;
@@ -170,7 +181,11 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 					 errhint("Sorry for that :( Patches are welcome!")
 					));
 
-			if(protobuf_size == 0)
+			cont = (*(ctx->protobuf_data)) >> 7;
+			tag = tag | (((uint32)((*(ctx->protobuf_data)) & 0x7F)) << shift);
+			shift += 7;
+
+			if(ctx->protobuf_size == 0)
 				ereport(ERROR,
 					(
 					 errcode(ERRCODE_INTERNAL_ERROR),
@@ -179,12 +194,8 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 					 errhint("Protobuf data is corrupted or there is a bug in pg_protobuf.")
 					));
 	
-			cont = (*protobuf_data) >> 7;
-			tag = tag | (((uint32)((*protobuf_data) & 0x7F)) << shift);
-			shift += 7;
-
-			protobuf_data++;
-			protobuf_size--;
+			ctx->protobuf_data++;
+			ctx->protobuf_size--;
 		}
 
 		/* Read value_or_length */
@@ -202,7 +213,9 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 					 errhint("That should have never happen. Your data is probably corrupted.")
 					));
 	
-			if(protobuf_size == 0)
+			temp = *ctx->protobuf_data;
+
+			if(ctx->protobuf_size == 0)
 				ereport(ERROR,
 					(
 					 errcode(ERRCODE_INTERNAL_ERROR),
@@ -211,9 +224,8 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 					 errhint("Protobuf data is corrupted or there is a bug in pg_protobuf.")
 					));
 		
-			temp = *protobuf_data;
-			protobuf_data++;
-			protobuf_size--;
+			ctx->protobuf_data++;
+			ctx->protobuf_size--;
 
 			value_or_length = value_or_length | ( (((uint64)temp) & 0x7F) << shift);
 			shift += 7;
@@ -237,25 +249,25 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 		result->field_info[result->nfields].type = type;
 		result->field_info[result->nfields].value_or_length = (int64)value_or_length;
 		if(type == PROTOBUF_TYPE_BYTES)
-			result->field_info[result->nfields].offset = protobuf_orig_size - protobuf_size;
+			result->field_info[result->nfields].offset = protobuf_orig_size - ctx->protobuf_size;
 		else
 			result->field_info[result->nfields].offset = 0;
 		result->nfields++;
 
 		if(type == PROTOBUF_TYPE_BYTES) {
 			// skip next value_or_length bytes
-			if(protobuf_size < value_or_length)
+			if(ctx->protobuf_size < value_or_length)
 				ereport(ERROR,
 					(
 					 errcode(ERRCODE_INTERNAL_ERROR),
 					 errmsg("Unexpected end of the protobuf data."),
 					 errdetail("protobuf_decode_internal() - %lu bytes left while trying to skip next %lu bytes.",
-						protobuf_size, value_or_length),
+						ctx->protobuf_size, value_or_length),
 					 errhint("Protobuf data is corrupted or there is a bug in pg_protobuf.")
 					));
 
-			protobuf_data += value_or_length;
-			protobuf_size -= value_or_length;
+			ctx->protobuf_data += value_or_length;
+			ctx->protobuf_size -= value_or_length;
 		} // type == PROTOBUF_TYPE_BYTES
 	}
 }
