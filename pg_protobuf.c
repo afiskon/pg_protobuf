@@ -130,7 +130,6 @@ Datum protobuf_get_bytes(PG_FUNCTION_ARGS) {
 
 // decode protobuf structure
 void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, ProtobufDecodeResult* result) {
-	Size protobuf_orig_size = protobuf_size; // TODO: make offset a part of ProtobufDecodeCtx
 	ProtobufDecodeCtx* ctx;
 	ProtobufDecodeCtx decode_ctx;
 	ctx = &decode_ctx;
@@ -214,14 +213,13 @@ void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, Pr
 		result->field_info[result->nfields].tag = tag;
 		result->field_info[result->nfields].type = type;
 		result->field_info[result->nfields].value_or_length = (int64)value_or_length;
-		if(type == PROTOBUF_TYPE_BYTES)
-			result->field_info[result->nfields].offset = protobuf_orig_size - ctx->protobuf_size;
-		else
-			result->field_info[result->nfields].offset = 0;
-		result->nfields++;
-
-		if(type == PROTOBUF_TYPE_BYTES)
+		if(type == PROTOBUF_TYPE_BYTES) {
+			result->field_info[result->nfields].offset = protobuf_decode_ctx_offset(ctx);
 			protobuf_decode_ctx_shift(ctx, value_or_length);
+		} else
+			result->field_info[result->nfields].offset = 0;
+
+		result->nfields++;
 	}
 }
 

@@ -2,9 +2,11 @@
 #include <postgres.h>
 #include <port.h>
 
+/* Init `ProtobufDecodeCtx` structure */
 void protobuf_decode_ctx_init(ProtobufDecodeCtx* ctx, const uint8* protobuf_data, Size protobuf_size) {
 	ctx->protobuf_data = protobuf_data;
 	ctx->protobuf_size = protobuf_size;
+	ctx->protobuf_orig_size = protobuf_size;
 }
 
 /* Shift `ProtobufDecodeCtx` to `bytes` bytes */
@@ -23,3 +25,7 @@ void protobuf_decode_ctx_shift(ProtobufDecodeCtx* ctx, uint64 bytes) {
 	ctx->protobuf_size -= bytes;
 }
 
+/* Calculate current offset */
+Size protobuf_decode_ctx_offset(const ProtobufDecodeCtx* ctx) {
+	return ctx->protobuf_orig_size - ctx->protobuf_size;
+}
