@@ -1,13 +1,7 @@
-#include "decode_ctx.h"
-
+#include "decode_internal.h"
 #include <postgres.h>
 #include <port.h>
 #include <utils/builtins.h>
-
-#define PROTOBUF_TYPE_INTEGER 0
-#define PROTOBUF_TYPE_BYTES   2
-
-#define PROTOBUF_RESULT_MAX_FIELDS 256
 
 PG_MODULE_MAGIC;
 
@@ -15,21 +9,7 @@ PG_FUNCTION_INFO_V1(protobuf_decode);
 PG_FUNCTION_INFO_V1(protobuf_get_integer);
 PG_FUNCTION_INFO_V1(protobuf_get_bytes);
 
-typedef struct {
-	uint32 tag;
-	uint8 type;
-	int64 value_or_length;
-	uint32 offset; // for PROTOBUF_TYPE_BYTES only
-} ProtobufFieldInfo;
-
-typedef struct {
-	uint32 nfields;
-	ProtobufFieldInfo field_info[PROTOBUF_RESULT_MAX_FIELDS];
-} ProtobufDecodeResult;
-
-void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, ProtobufDecodeResult* result);
-
-// protobuf -> cstring
+/* protobuf -> cstring */
 Datum protobuf_decode(PG_FUNCTION_ARGS) {
 	char temp_buff[128];
 	uint32 i;
@@ -77,6 +57,7 @@ Datum protobuf_decode(PG_FUNCTION_ARGS) {
 	PG_RETURN_CSTRING((Datum)result_buff);
 }
 
+/* protobuf -> integer */
 Datum protobuf_get_integer(PG_FUNCTION_ARGS) {
 	bytea* protobuf_bytea = PG_GETARG_BYTEA_P(0);
 	int32 i, tag = PG_GETARG_INT32(1);
@@ -89,17 +70,18 @@ Datum protobuf_get_integer(PG_FUNCTION_ARGS) {
 	for(i = 0; i < decode_result.nfields; i++) {
 		if(decode_result.field_info[i].tag == tag) {
 			if(decode_result.field_info[i].type != PROTOBUF_TYPE_INTEGER)
-				// if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error
+				/* if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error */
 				PG_RETURN_NULL();
 
 			PG_RETURN_INT64((int64)decode_result.field_info[i].value_or_length);
 		}
 	}	
 
-	// not found
+	/* not found */
 	PG_RETURN_NULL();
 }
 
+/* protobuf -> bytea */
 Datum protobuf_get_bytes(PG_FUNCTION_ARGS) {
 	bytea* protobuf_bytea = PG_GETARG_BYTEA_P(0);
 	int32 i, tag = PG_GETARG_INT32(1);
@@ -112,7 +94,7 @@ Datum protobuf_get_bytes(PG_FUNCTION_ARGS) {
 	for(i = 0; i < decode_result.nfields; i++) {
 		if(decode_result.field_info[i].tag == tag) {
 			if(decode_result.field_info[i].type != PROTOBUF_TYPE_BYTES)
-				// if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error
+				/* if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error */
 				PG_RETURN_NULL();
 			else {
 				uint64 length = (uint64)decode_result.field_info[i].value_or_length;
@@ -124,102 +106,7 @@ Datum protobuf_get_bytes(PG_FUNCTION_ARGS) {
 		}
 	}	
 
-	// not found
+	/* not found */
 	PG_RETURN_NULL();
-}
-
-// decode protobuf structure
-void protobuf_decode_internal(const uint8* protobuf_data, Size protobuf_size, ProtobufDecodeResult* result) {
-	ProtobufDecodeCtx* ctx;
-	ProtobufDecodeCtx decode_ctx;
-	ctx = &decode_ctx;
-	protobuf_decode_ctx_init(ctx, protobuf_data, protobuf_size);
-	result->nfields = 0;
-
-	while(ctx->protobuf_size > 0) {
-		uint8 cont = (*(ctx->protobuf_data)) >> 7;
-		uint32 tag = ((*(ctx->protobuf_data)) >> 3) & 0x0F;
-		uint8 type = (*(ctx->protobuf_data)) & 0x07;
-		uint64 value_or_length = 0;
-		uint8 shift;
-
-		if((type != PROTOBUF_TYPE_INTEGER) && (type != PROTOBUF_TYPE_BYTES))
-			ereport(ERROR,
-				(
-				 errcode(ERRCODE_INTERNAL_ERROR),
-				 errmsg("Usupported protobuf type."),
-				 errdetail("protobuf_decode_internal() doesn't support type %u yet.", type),
-				 errhint("Sorry for that :( Patches are welcome!")
-				));
-
-
-		protobuf_decode_ctx_shift(ctx, 1);
-
-		/* Read the tag */
-		shift = 4;
-		while(cont) {
-			if((shift / 8) >= sizeof(tag))
-				ereport(ERROR,
-					(
-					 errcode(ERRCODE_INTERNAL_ERROR),
-					 errmsg("Too long tag encoded in the protobuf data."),
-					 errdetail("protobuf_decode_internal() - tag variable is "
-								"uint32 and your protobuf stores larger tags."),
-					 errhint("Sorry for that :( Patches are welcome!")
-					));
-
-			cont = (*(ctx->protobuf_data)) >> 7;
-			tag = tag | (((uint32)((*(ctx->protobuf_data)) & 0x7F)) << shift);
-			shift += 7;
-			protobuf_decode_ctx_shift(ctx, 1);
-		}
-
-		/* Read value_or_length */
-		shift = 0;
-		for(;;) {
-			uint8 temp;
-
-			if((shift / 8) >= sizeof(value_or_length))
-				ereport(ERROR,
-					(
-					 errcode(ERRCODE_INTERNAL_ERROR),
-					 errmsg("Too long integer encoded in the protobuf data."),
-					 errdetail("protobuf_decode_internal() - value_or_length variable is "
-								"uint64 and your protobuf stores larger integers."),
-					 errhint("That should have never happen. Your data is probably corrupted.")
-					));
-	
-			temp = *ctx->protobuf_data;
-			protobuf_decode_ctx_shift(ctx, 1);
-
-			value_or_length = value_or_length | ( (((uint64)temp) & 0x7F) << shift);
-			shift += 7;
-
-			if(!(temp & 0x80)) // 0b0xxxxxxx - the end of the integer
-				break;
-		}
-
-		if(result->nfields == PROTOBUF_RESULT_MAX_FIELDS)
-			ereport(ERROR,
-				(
-				 errcode(ERRCODE_INTERNAL_ERROR),
-				 errmsg("Protobuf data contains to many fields."),
-				 errdetail("protobuf_decode_internal() - ProtobufDecodeResult structure can't fit all the fields."),
-				 errhint("You can increase PROTOBUF_RESULT_MAX_FIELDS constant. "
-						"Also it's probably worth notifying the author regarding this issue.")
-				));
-
-		/* Save the field */
-		result->field_info[result->nfields].tag = tag;
-		result->field_info[result->nfields].type = type;
-		result->field_info[result->nfields].value_or_length = (int64)value_or_length;
-		if(type == PROTOBUF_TYPE_BYTES) {
-			result->field_info[result->nfields].offset = protobuf_decode_ctx_offset(ctx);
-			protobuf_decode_ctx_shift(ctx, value_or_length);
-		} else
-			result->field_info[result->nfields].offset = 0;
-
-		result->nfields++;
-	}
 }
 
