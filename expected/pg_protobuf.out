@@ -181,6 +181,18 @@ SELECT protobuf_get_sfixed32(E'\\x0a0365617815320000001d00ffffff2202100f', 3);
                   -256
 (1 row)
 
+SELECT protobuf_get_float(E'\\x0a036561781500004a421d333380c32202100f', 2);
+ protobuf_get_float 
+--------------------
+               50.5
+(1 row)
+
+SELECT protobuf_get_float(E'\\x0a036561781500004a421d333380c32202100f', 3);
+ protobuf_get_float 
+--------------------
+             -256.4
+(1 row)
+
 SELECT protobuf_get_bool(E'\\x0a03656178107b18c8032202100f', 6);
  protobuf_get_bool 
 -------------------
