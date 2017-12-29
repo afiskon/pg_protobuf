@@ -11,8 +11,8 @@ CREATE FUNCTION protobuf_get_int_multi(bytea, int)
     AS 'MODULE_PATHNAME'
     LANGUAGE C STRICT IMMUTABLE;
 
-CREATE FUNCTION protobuf_get_sfixed32(bytea, int)
-    RETURNS int
+CREATE FUNCTION protobuf_get_sfixed32_multi(bytea, int)
+    RETURNS int[]
     AS 'MODULE_PATHNAME'
     LANGUAGE C STRICT IMMUTABLE;
 
@@ -51,6 +51,12 @@ $$ LANGUAGE 'plpgsql' IMMUTABLE;
 CREATE FUNCTION protobuf_get_int(data bytea, tag int) RETURNS bigint AS $$
 BEGIN
 	RETURN (protobuf_get_int_multi(data, tag))[1];
+END
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
+
+CREATE FUNCTION protobuf_get_sfixed32(data bytea, tag int) RETURNS int AS $$
+BEGIN
+	RETURN (protobuf_get_sfixed32_multi(data, tag))[1];
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
 

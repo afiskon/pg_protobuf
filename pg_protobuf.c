@@ -10,7 +10,7 @@ PG_MODULE_MAGIC;
 
 PG_FUNCTION_INFO_V1(protobuf_decode);
 PG_FUNCTION_INFO_V1(protobuf_get_int_multi);
-PG_FUNCTION_INFO_V1(protobuf_get_sfixed32);
+PG_FUNCTION_INFO_V1(protobuf_get_sfixed32_multi);
 PG_FUNCTION_INFO_V1(protobuf_get_float);
 PG_FUNCTION_INFO_V1(protobuf_get_sfixed64);
 PG_FUNCTION_INFO_V1(protobuf_get_double);
@@ -122,7 +122,7 @@ Datum protobuf_get_int_multi(PG_FUNCTION_ARGS) {
 			continue;
 
 		if(decode_result.field_info[i].type != PROTOBUF_TYPE_INTEGER)
-			// if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error
+			/* if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error */
 			continue;
 
 		elements[nelements] = Int64GetDatum((int64)decode_result.field_info[i].value_or_length);
@@ -140,27 +140,47 @@ Datum protobuf_get_int_multi(PG_FUNCTION_ARGS) {
 }
 
 /* protobuf -> sfixed32 */
-Datum protobuf_get_sfixed32(PG_FUNCTION_ARGS) {
+Datum protobuf_get_sfixed32_multi(PG_FUNCTION_ARGS) {
 	bytea* protobuf_bytea = PG_GETARG_BYTEA_P(0);
 	int32 i, tag = PG_GETARG_INT32(1);
 	Size protobuf_size = VARSIZE(protobuf_bytea) - VARHDRSZ;
 	const uint8* protobuf_data = (const uint8*)VARDATA(protobuf_bytea);
+    Oid element_type = INT4OID; // TODO changed
+    int  dims[MAXDIM], lbs[MAXDIM], nelements = 0, ndims = 1; // one dimension
+    bool nulls[PROTOBUF_RESULT_MAX_FIELDS], typbyval;
+    Datum elements[PROTOBUF_RESULT_MAX_FIELDS];
+    ArrayType *result;
+    int16 typlen;
+    char typalign;
 	ProtobufDecodeResult decode_result;
 
+    /* get required info about the array element type */
+    get_typlenbyvalalign(element_type, &typlen, &typbyval, &typalign);
+
+	/* decode the data */
 	protobuf_decode_internal(protobuf_data, protobuf_size, &decode_result);
 
+	/* fill the array */
 	for(i = 0; i < decode_result.nfields; i++) {
-		if(decode_result.field_info[i].tag == tag) {
-			if(decode_result.field_info[i].type != PROTOBUF_TYPE_FIXED32)
-				/* if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error */
-				PG_RETURN_NULL();
+		if(decode_result.field_info[i].tag != tag)
+			continue;
 
-			PG_RETURN_INT32((int32)decode_result.field_info[i].value_or_length);
-		}
+		if(decode_result.field_info[i].type != PROTOBUF_TYPE_FIXED32) // TODO changed
+			/* if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error */
+			continue;
+
+		elements[nelements] = Int32GetDatum((int64)decode_result.field_info[i].value_or_length); // TODO changed
+		nulls[nelements] = false;
+		nelements++;
 	}
 
-	/* not found */
-	PG_RETURN_NULL();
+    /* build the PostgreSQL array representation */
+    dims[0] = nelements; // number of elements
+    lbs[0] = 1; // lower bound is 1
+    result = construct_md_array(elements, nulls, ndims, dims, lbs,
+                                element_type, typlen, typbyval, typalign);
+
+    PG_RETURN_POINTER(result);
 }
 
 /* protobuf -> float */
