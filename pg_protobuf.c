@@ -16,6 +16,15 @@ PG_FUNCTION_INFO_V1(protobuf_get_sfixed64);
 PG_FUNCTION_INFO_V1(protobuf_get_double);
 PG_FUNCTION_INFO_V1(protobuf_get_bytes);
 
+typedef Datum (*FieldInfoToDatumCallback)(ProtobufFieldInfo*);
+
+Datum protobuf_get_int_multi_callback(ProtobufFieldInfo* field_info);
+Datum protobuf_get_sfixed32_multi_callback(ProtobufFieldInfo* field_info);
+
+Datum protobuf_get_any_multi_internal(
+	bytea* protobuf_bytea, int32 tag, Oid element_type, uint8 expected_protobuf_type,
+	FieldInfoToDatumCallback field_info_to_datum_cb);
+
 /* protobuf -> cstring */
 Datum protobuf_decode(PG_FUNCTION_ARGS) {
 	char temp_buff[128];
@@ -95,17 +104,16 @@ Datum protobuf_decode(PG_FUNCTION_ARGS) {
 	PG_RETURN_CSTRING((Datum)result_buff);
 }
 
-/* protobuf -> int32[] / int64[] / etc */
-Datum protobuf_get_int_multi(PG_FUNCTION_ARGS) {
-	bytea* protobuf_bytea = PG_GETARG_BYTEA_P(0);
-	int32 i, tag = PG_GETARG_INT32(1);
+/* Common code used in all protobuf_get_*_multi procedures */
+Datum protobuf_get_any_multi_internal(
+		bytea* protobuf_bytea, int32 tag, Oid element_type, uint8 expected_protobuf_type,
+		FieldInfoToDatumCallback field_info_to_datum_cb) {
 	Size protobuf_size = VARSIZE(protobuf_bytea) - VARHDRSZ;
 	const uint8* protobuf_data = (const uint8*)VARDATA(protobuf_bytea);
-    Oid element_type = INT8OID;
-    int  dims[MAXDIM], lbs[MAXDIM], nelements = 0, ndims = 1; // one dimension
+    int  dims[MAXDIM], lbs[MAXDIM], nelements = 0, ndims = 1; /* one dimension */
     bool nulls[PROTOBUF_RESULT_MAX_FIELDS], typbyval;
     Datum elements[PROTOBUF_RESULT_MAX_FIELDS];
-    ArrayType *result;
+	int32 i;
     int16 typlen;
     char typalign;
 	ProtobufDecodeResult decode_result;
@@ -121,66 +129,51 @@ Datum protobuf_get_int_multi(PG_FUNCTION_ARGS) {
 		if(decode_result.field_info[i].tag != tag)
 			continue;
 
-		if(decode_result.field_info[i].type != PROTOBUF_TYPE_INTEGER)
+		if(decode_result.field_info[i].type != expected_protobuf_type)
 			/* if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error */
 			continue;
 
-		elements[nelements] = Int64GetDatum((int64)decode_result.field_info[i].value_or_length);
+		elements[nelements] = field_info_to_datum_cb(&decode_result.field_info[i]);
 		nulls[nelements] = false;
 		nelements++;
 	}
 
-    /* build the PostgreSQL array representation */
-    dims[0] = nelements; // number of elements
-    lbs[0] = 1; // lower bound is 1
-    result = construct_md_array(elements, nulls, ndims, dims, lbs,
-                                element_type, typlen, typbyval, typalign);
+    /* build and return a pointer to ArrayType, PostgreSQL's array representation */
+    dims[0] = nelements; /* number of elements */
+    lbs[0] = 1; /* lower bound is 1 */
+    PG_RETURN_POINTER(
+		construct_md_array(elements, nulls, ndims, dims, lbs, element_type, typlen, typbyval, typalign)
+	);
+}
 
-    PG_RETURN_POINTER(result);
+/* For internal usage in protobuf_get_int_multi procedure only */
+Datum protobuf_get_int_multi_callback(ProtobufFieldInfo* field_info) {
+	return Int64GetDatum(field_info->value_or_length);
+}
+
+/* protobuf -> int32[] / int64[] / etc */
+Datum protobuf_get_int_multi(PG_FUNCTION_ARGS) {
+	bytea* protobuf_bytea = PG_GETARG_BYTEA_P(0);
+	int32 tag = PG_GETARG_INT32(1);
+
+	return protobuf_get_any_multi_internal(
+		protobuf_bytea, tag, INT8OID, PROTOBUF_TYPE_INTEGER,
+		protobuf_get_int_multi_callback);
+}
+
+/* For internal usage in protobuf_get_sfixed32_multi procedure only */
+Datum protobuf_get_sfixed32_multi_callback(ProtobufFieldInfo* field_info) {
+	return Int32GetDatum(field_info->value_or_length);
 }
 
 /* protobuf -> sfixed32 */
 Datum protobuf_get_sfixed32_multi(PG_FUNCTION_ARGS) {
 	bytea* protobuf_bytea = PG_GETARG_BYTEA_P(0);
-	int32 i, tag = PG_GETARG_INT32(1);
-	Size protobuf_size = VARSIZE(protobuf_bytea) - VARHDRSZ;
-	const uint8* protobuf_data = (const uint8*)VARDATA(protobuf_bytea);
-    Oid element_type = INT4OID; // TODO changed
-    int  dims[MAXDIM], lbs[MAXDIM], nelements = 0, ndims = 1; // one dimension
-    bool nulls[PROTOBUF_RESULT_MAX_FIELDS], typbyval;
-    Datum elements[PROTOBUF_RESULT_MAX_FIELDS];
-    ArrayType *result;
-    int16 typlen;
-    char typalign;
-	ProtobufDecodeResult decode_result;
+	int32 tag = PG_GETARG_INT32(1);
 
-    /* get required info about the array element type */
-    get_typlenbyvalalign(element_type, &typlen, &typbyval, &typalign);
-
-	/* decode the data */
-	protobuf_decode_internal(protobuf_data, protobuf_size, &decode_result);
-
-	/* fill the array */
-	for(i = 0; i < decode_result.nfields; i++) {
-		if(decode_result.field_info[i].tag != tag)
-			continue;
-
-		if(decode_result.field_info[i].type != PROTOBUF_TYPE_FIXED32) // TODO changed
-			/* if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error */
-			continue;
-
-		elements[nelements] = Int32GetDatum((int64)decode_result.field_info[i].value_or_length); // TODO changed
-		nulls[nelements] = false;
-		nelements++;
-	}
-
-    /* build the PostgreSQL array representation */
-    dims[0] = nelements; // number of elements
-    lbs[0] = 1; // lower bound is 1
-    result = construct_md_array(elements, nulls, ndims, dims, lbs,
-                                element_type, typlen, typbyval, typalign);
-
-    PG_RETURN_POINTER(result);
+	return protobuf_get_any_multi_internal(
+		protobuf_bytea, tag, INT4OID, PROTOBUF_TYPE_FIXED32,
+		protobuf_get_sfixed32_multi_callback);
 }
 
 /* protobuf -> float */
