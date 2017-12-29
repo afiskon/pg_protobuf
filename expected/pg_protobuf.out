@@ -241,6 +241,18 @@ SELECT protobuf_get_sfixed64(E'\\x0a07616669736b6f6e11e7ffffffffffffff1933333333
                    -25
 (1 row)
 
+SELECT protobuf_get_sfixed64(E'\\x0a0365617810321880022202100f310b0000000000000031eaffffffffffffff', 6);
+ protobuf_get_sfixed64 
+-----------------------
+                    11
+(1 row)
+
+SELECT protobuf_get_sfixed64_multi(E'\\x0a0365617810321880022202100f310b0000000000000031eaffffffffffffff', 6);
+ protobuf_get_sfixed64_multi 
+-----------------------------
+ {11,-22}
+(1 row)
+
 SELECT protobuf_get_double(E'\\x0a036561781132000000000000001966666666660670c02202100f', 3);
  protobuf_get_double 
 ---------------------
