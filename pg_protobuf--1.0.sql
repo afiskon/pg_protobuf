@@ -6,11 +6,6 @@ CREATE FUNCTION protobuf_decode(bytea)
     AS 'MODULE_PATHNAME'
     LANGUAGE C STRICT IMMUTABLE;
 
-CREATE FUNCTION protobuf_get_int(bytea, int)
-    RETURNS bigint
-    AS 'MODULE_PATHNAME'
-    LANGUAGE C STRICT IMMUTABLE;
-
 CREATE FUNCTION protobuf_get_int_multi(bytea, int)
     RETURNS bigint[]
     AS 'MODULE_PATHNAME'
@@ -52,3 +47,10 @@ BEGIN
 	RETURN coalesce(protobuf_get_int(data, tag), 0) = 1;
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
+
+CREATE FUNCTION protobuf_get_int(data bytea, tag int) RETURNS bigint AS $$
+BEGIN
+	RETURN (protobuf_get_int_multi(data, tag))[1];
+END
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
+
