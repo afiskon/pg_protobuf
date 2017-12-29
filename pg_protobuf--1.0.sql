@@ -21,8 +21,8 @@ CREATE FUNCTION protobuf_get_float_multi(bytea, int)
     AS 'MODULE_PATHNAME'
     LANGUAGE C STRICT IMMUTABLE;
 
-CREATE FUNCTION protobuf_get_sfixed64(bytea, int)
-    RETURNS int
+CREATE FUNCTION protobuf_get_sfixed64_multi(bytea, int)
+    RETURNS bigint[]
     AS 'MODULE_PATHNAME'
     LANGUAGE C STRICT IMMUTABLE;
 
@@ -63,6 +63,12 @@ $$ LANGUAGE 'plpgsql' IMMUTABLE;
 CREATE FUNCTION protobuf_get_float(data bytea, tag int) RETURNS real AS $$
 BEGIN
 	RETURN (protobuf_get_float_multi(data, tag))[1];
+END
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
+
+CREATE FUNCTION protobuf_get_sfixed64(data bytea, tag int) RETURNS bigint AS $$
+BEGIN
+	RETURN (protobuf_get_sfixed64_multi(data, tag))[1];
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
 
