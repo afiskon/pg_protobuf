@@ -11,6 +11,11 @@ CREATE FUNCTION protobuf_get_int(bytea, int)
     AS 'MODULE_PATHNAME'
     LANGUAGE C STRICT IMMUTABLE;
 
+CREATE FUNCTION protobuf_get_int_multi(bytea, int)
+    RETURNS bigint[]
+    AS 'MODULE_PATHNAME'
+    LANGUAGE C STRICT IMMUTABLE;
+
 CREATE FUNCTION protobuf_get_sfixed32(bytea, int)
     RETURNS int
     AS 'MODULE_PATHNAME'

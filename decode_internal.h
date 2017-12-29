@@ -9,7 +9,7 @@
 #define PROTOBUF_TYPE_BYTES   2
 #define PROTOBUF_TYPE_FIXED32 5
 
-#define PROTOBUF_RESULT_MAX_FIELDS 1024
+#define PROTOBUF_RESULT_MAX_FIELDS 256
 
 typedef struct {
 	uint32 tag;
