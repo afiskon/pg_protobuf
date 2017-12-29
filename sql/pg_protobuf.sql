@@ -52,6 +52,10 @@ SELECT protobuf_get_int(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eee
 
 SELECT protobuf_get_int(E'\\x0a0365617810c0bbf8ffffffffffff0118f890e6d4ba97f3eeee012202100f', 3);
 
+SELECT protobuf_get_int(E'\\x0a0365617810321880022202100f306f30de0130cd02', 6);
+
+SELECT protobuf_get_int_multi(E'\\x0a0365617810321880022202100f306f30de0130cd02', 6);
+
 SELECT protobuf_get_sfixed32(E'\\x0a0365617815320000001d00ffffff2202100f', 2);
 
 SELECT protobuf_get_sfixed32(E'\\x0a0365617815320000001d00ffffff2202100f', 3);
