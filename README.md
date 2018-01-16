@@ -55,6 +55,7 @@ explain select hero_name(x) from heroes order by hero_name(x) limit 10;
 
 Current limitations and possible workarounds:
 
+* Modification of the Protobuf data is not supported.
 * Enums are not directly supported. However, you can read them using
   `protobuf_get_int` and `protobuf_get_int_multi` procedures;
 * Unsigned Protobuf types (`uint`, `fixed32`, `fixed64`) are not directly
