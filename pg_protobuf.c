@@ -16,14 +16,15 @@ PG_FUNCTION_INFO_V1(protobuf_get_sfixed32_multi);
 PG_FUNCTION_INFO_V1(protobuf_get_float_multi);
 PG_FUNCTION_INFO_V1(protobuf_get_sfixed64_multi);
 PG_FUNCTION_INFO_V1(protobuf_get_double_multi);
-PG_FUNCTION_INFO_V1(protobuf_get_bytes);
+PG_FUNCTION_INFO_V1(protobuf_get_bytes_multi);
 
-typedef Datum (*FieldInfoToDatumCallback)(ProtobufFieldInfo*);
+typedef Datum (*FieldInfoToDatumCallback)(bytea*, ProtobufFieldInfo*);
 
-Datum protobuf_get_int_or_sfixed64_multi_callback(ProtobufFieldInfo* field_info);
-Datum protobuf_get_sfixed32_multi_callback(ProtobufFieldInfo* field_info);
-Datum protobuf_get_float_multi_callback(ProtobufFieldInfo* field_info);
-Datum protobuf_get_double_multi_callback(ProtobufFieldInfo* field_info);
+Datum protobuf_get_int_or_sfixed64_multi_callback(bytea*, ProtobufFieldInfo* field_info);
+Datum protobuf_get_sfixed32_multi_callback(bytea*, ProtobufFieldInfo* field_info);
+Datum protobuf_get_float_multi_callback(bytea*, ProtobufFieldInfo* field_info);
+Datum protobuf_get_double_multi_callback(bytea*, ProtobufFieldInfo* field_info);
+Datum protobuf_get_bytes_multi_callback(bytea*, ProtobufFieldInfo* field_info);
 
 Datum protobuf_get_any_multi_internal(
     bytea* protobuf_bytea, int32 tag, Oid element_type, uint8 expected_protobuf_type,
@@ -137,7 +138,7 @@ Datum protobuf_get_any_multi_internal(
             /* if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error */
             continue;
 
-        elements[nelements] = field_info_to_datum_cb(&decode_result.field_info[i]);
+        elements[nelements] = field_info_to_datum_cb(protobuf_bytea, &decode_result.field_info[i]);
         nulls[nelements] = false;
         nelements++;
     }
@@ -151,7 +152,7 @@ Datum protobuf_get_any_multi_internal(
 }
 
 /* For internal usage in protobuf_get_{int,sfixed64}_multi procedures only */
-Datum protobuf_get_int_or_sfixed64_multi_callback(ProtobufFieldInfo* field_info) {
+Datum protobuf_get_int_or_sfixed64_multi_callback(bytea* protobuf_bytea, ProtobufFieldInfo* field_info) {
     return Int64GetDatum(field_info->value_or_length);
 }
 
@@ -166,7 +167,7 @@ Datum protobuf_get_int_multi(PG_FUNCTION_ARGS) {
 }
 
 /* For internal usage in protobuf_get_sfixed32_multi procedure only */
-Datum protobuf_get_sfixed32_multi_callback(ProtobufFieldInfo* field_info) {
+Datum protobuf_get_sfixed32_multi_callback(bytea* protobuf_bytea, ProtobufFieldInfo* field_info) {
     return Int32GetDatum(field_info->value_or_length);
 }
 
@@ -181,7 +182,7 @@ Datum protobuf_get_sfixed32_multi(PG_FUNCTION_ARGS) {
 }
 
 /* For internal usage in protobuf_get_float_multi procedure only */
-Datum protobuf_get_float_multi_callback(ProtobufFieldInfo* field_info) {
+Datum protobuf_get_float_multi_callback(bytea* protobuf_bytea, ProtobufFieldInfo* field_info) {
     return Float4GetDatum(*(float*)&(field_info->value_or_length));
 }
 
@@ -206,7 +207,7 @@ Datum protobuf_get_sfixed64_multi(PG_FUNCTION_ARGS) {
 }
 
 /* For internal usage in protobuf_get_double_multi procedure only */
-Datum protobuf_get_double_multi_callback(ProtobufFieldInfo* field_info) {
+Datum protobuf_get_double_multi_callback(bytea* protobuf_bytea, ProtobufFieldInfo* field_info) {
     return Float8GetDatum(*(double*)&(field_info->value_or_length));
 }
 
@@ -220,32 +221,23 @@ Datum protobuf_get_double_multi(PG_FUNCTION_ARGS) {
         protobuf_get_double_multi_callback);
 }
 
-/* protobuf -> bytea */
-Datum protobuf_get_bytes(PG_FUNCTION_ARGS) {
-    bytea* protobuf_bytea = PG_GETARG_BYTEA_P(0);
-    int32 i, tag = PG_GETARG_INT32(1);
-    Size protobuf_size = VARSIZE(protobuf_bytea) - VARHDRSZ;
+/* For internal usage in protobuf_get_bytes_multi procedure only */
+Datum protobuf_get_bytes_multi_callback(bytea* protobuf_bytea, ProtobufFieldInfo* field_info) {
     const uint8* protobuf_data = (const uint8*)VARDATA(protobuf_bytea);
-    ProtobufDecodeResult decode_result;
+    uint64 length = (uint64)field_info->value_or_length;
+    uint8* buffer = palloc(VARHDRSZ + length);
+    SET_VARSIZE(buffer, VARHDRSZ + length);
+    memcpy(VARDATA(buffer), protobuf_data + field_info->offset, length);
+    return PointerGetDatum(buffer);
+}
 
-    protobuf_decode_internal(protobuf_data, protobuf_size, &decode_result);
+/* protobuf -> bytea[] */
+Datum protobuf_get_bytes_multi(PG_FUNCTION_ARGS) {
+    bytea* protobuf_bytea = PG_GETARG_BYTEA_P(0);
+    int32 tag = PG_GETARG_INT32(1);
 
-    for(i = 0; i < decode_result.nfields; i++) {
-        if(decode_result.field_info[i].tag == tag) {
-            if(decode_result.field_info[i].type != PROTOBUF_TYPE_BYTES)
-                /* if necessary, we can easily implement prtobuf_get_*_strict that whould throw an error */
-                PG_RETURN_NULL();
-            else {
-                uint64 length = (uint64)decode_result.field_info[i].value_or_length;
-                uint8* buffer = palloc(VARHDRSZ + length);
-                SET_VARSIZE(buffer, VARHDRSZ + length);
-                memcpy(VARDATA(buffer), protobuf_data + decode_result.field_info[i].offset, length);
-                PG_RETURN_BYTEA_P(buffer);
-            }    
-        }
-    }    
-
-    /* not found */
-    PG_RETURN_NULL();
+    return protobuf_get_any_multi_internal(
+        protobuf_bytea, tag, BYTEAOID, PROTOBUF_TYPE_BYTES,
+        protobuf_get_bytes_multi_callback);
 }
 

@@ -32,22 +32,10 @@ CREATE FUNCTION protobuf_get_double_multi(bytea, int)
     AS 'MODULE_PATHNAME'
     LANGUAGE C STRICT IMMUTABLE;
 
-CREATE FUNCTION protobuf_get_bytes(bytea, int)
-    RETURNS bytea
+CREATE FUNCTION protobuf_get_bytes_multi(bytea, int)
+    RETURNS bytea[]
     AS 'MODULE_PATHNAME'
     LANGUAGE C STRICT IMMUTABLE;
-
-CREATE FUNCTION protobuf_get_string(data bytea, tag int) RETURNS text AS $$
-BEGIN
-    RETURN convert_from(protobuf_get_bytes(data, tag), 'utf-8');
-END
-$$ LANGUAGE 'plpgsql' IMMUTABLE;
-
-CREATE FUNCTION protobuf_get_bool(data bytea, tag int) RETURNS boolean AS $$
-BEGIN
-    RETURN coalesce(protobuf_get_int(data, tag), 0) = 1;
-END
-$$ LANGUAGE 'plpgsql' IMMUTABLE;
 
 CREATE FUNCTION protobuf_get_int(data bytea, tag int) RETURNS bigint AS $$
 BEGIN
@@ -77,6 +65,24 @@ $$ LANGUAGE 'plpgsql' IMMUTABLE;
 CREATE FUNCTION protobuf_get_double(data bytea, tag int) RETURNS double precision AS $$
 BEGIN
     RETURN (protobuf_get_double_multi(data, tag))[1];
+END
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
+
+CREATE FUNCTION protobuf_get_bytes(data bytea, tag int) RETURNS bytea AS $$
+BEGIN
+    RETURN (protobuf_get_bytes_multi(data, tag))[1];
+END
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
+
+CREATE FUNCTION protobuf_get_string(data bytea, tag int) RETURNS text AS $$
+BEGIN
+    RETURN convert_from(protobuf_get_bytes(data, tag), 'utf-8');
+END
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
+
+CREATE FUNCTION protobuf_get_bool(data bytea, tag int) RETURNS boolean AS $$
+BEGIN
+    RETURN coalesce(protobuf_get_int(data, tag), 0) = 1;
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
 
