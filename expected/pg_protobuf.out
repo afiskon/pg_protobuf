@@ -265,6 +265,12 @@ SELECT protobuf_get_double(E'\\x0a07616669736b6f6e11e7ffffffffffffff193333333333
               1024.8
 (1 row)
 
+SELECT protobuf_get_double_multi(E'\\x0a0365617810321880022202100f319a99999999d95e40316666666666867cc0', 6);
+ protobuf_get_double_multi 
+---------------------------
+ {123.4,-456.4}
+(1 row)
+
 SELECT protobuf_get_bool(E'\\x0a03656178107b18c8032202100f', 6);
  protobuf_get_bool 
 -------------------
