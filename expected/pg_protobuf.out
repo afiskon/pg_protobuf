@@ -143,6 +143,12 @@ SELECT protobuf_get_string_multi(E'\\x0a0365617810321880022202100f320568656c6c6f
  {hello,world}
 (1 row)
 
+SELECT protobuf_get_string_multi(E'\\x0a0365617810321880022202100f320568656c6c6f3205776f726c64', 7);
+ protobuf_get_string_multi 
+---------------------------
+ {}
+(1 row)
+
 SELECT protobuf_decode(E'\\x0a036561781088ef99abc5e88c91111880022202100f');
                    protobuf_decode                    
 ------------------------------------------------------

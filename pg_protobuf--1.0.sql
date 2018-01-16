@@ -87,8 +87,11 @@ DECLARE
 BEGIN
     bytes := protobuf_get_bytes_multi(data, tag);
 
-    FOR i IN array_lower(bytes, 1) .. array_upper(bytes, 1)
-    LOOP
+    IF bytes = '{}' THEN
+        RETURN '{}';
+    END IF;
+
+    FOR i IN array_lower(bytes, 1) .. array_upper(bytes, 1) LOOP
         strings[i] = convert_from(bytes[i], 'utf-8');
     END LOOP;
 
