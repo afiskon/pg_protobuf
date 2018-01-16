@@ -30,6 +30,8 @@ SELECT protobuf_get_bytes(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: 
 
 SELECT protobuf_get_bytes(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 5);
 
+SELECT protobuf_get_bytes_multi(E'\\x0a0365617810321880022202100f320568656c6c6f3205776f726c64', 6);
+
 SELECT protobuf_get_string(E'\\x0a0365617810321880022202100f' :: bytea, 1);
 
 SELECT protobuf_get_string(E'\\x0a07616669736b6f6e10191880082a060a0200011064' :: bytea, 1);
