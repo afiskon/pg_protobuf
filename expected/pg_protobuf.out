@@ -301,4 +301,16 @@ SELECT protobuf_get_bool(E'\\x0a07616669736b6f6e10191880082a060a02000110643001',
  t
 (1 row)
 
+SELECT protobuf_get_bool_multi(E'\\x0a0365617810321880022202100f300130003001', 6);
+ protobuf_get_bool_multi 
+-------------------------
+ {t,f,t}
+(1 row)
+
+SELECT protobuf_get_bool_multi(E'\\x0a0365617810321880022202100f300130003001', 7);
+ protobuf_get_bool_multi 
+-------------------------
+ {}
+(1 row)
+
 DROP EXTENSION pg_protobuf;

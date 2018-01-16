@@ -92,7 +92,7 @@ BEGIN
     END IF;
 
     FOR i IN array_lower(bytes, 1) .. array_upper(bytes, 1) LOOP
-        strings[i] = convert_from(bytes[i], 'utf-8');
+        strings[i] := convert_from(bytes[i], 'utf-8');
     END LOOP;
 
     RETURN strings;
@@ -105,9 +105,21 @@ BEGIN
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
 
-/*
 CREATE FUNCTION protobuf_get_bool_multi(data bytea, tag int) RETURNS boolean[] AS $$
+DECLARE
+    ints int[];
+    bools boolean[];
 BEGIN
+    ints := protobuf_get_int_multi(data, tag);
+
+    IF ints = '{}' THEN
+        RETURN '{}';
+    END IF;
+
+    FOR i IN array_lower(ints, 1) .. array_upper(ints, 1) LOOP
+        bools[i] := (ints[i] = 1);
+    END LOOP;
+
+    RETURN bools;
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
-*/
