@@ -44,6 +44,8 @@ SELECT protobuf_get_string(E'\\x10321880022202100f82200ad0a8d183d180d0b8d0ba' ::
 
 SELECT length(protobuf_get_string(E'\\x10321880022202100f82208e02' || convert_to(repeat('a', 270), 'utf-8'), 512));
 
+SELECT protobuf_get_string_multi(E'\\x0a0365617810321880022202100f320568656c6c6f3205776f726c64', 6);
+
 SELECT protobuf_decode(E'\\x0a036561781088ef99abc5e88c91111880022202100f');
 
 SELECT protobuf_get_int(E'\\x0a036561781088ef99abc5e88c91111880022202100f', 2);

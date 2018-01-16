@@ -80,6 +80,22 @@ BEGIN
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
 
+CREATE FUNCTION protobuf_get_string_multi(data bytea, tag int) RETURNS text AS $$
+DECLARE
+    bytes bytea[];
+    strings text[];
+BEGIN
+    bytes := protobuf_get_bytes_multi(data, tag);
+
+    FOR i IN array_lower(bytes, 1) .. array_upper(bytes, 1)
+    LOOP
+        strings[i] = convert_from(bytes[i], 'utf-8');
+    END LOOP;
+
+    RETURN strings;
+END
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
+
 CREATE FUNCTION protobuf_get_bool(data bytea, tag int) RETURNS boolean AS $$
 BEGIN
     RETURN coalesce(protobuf_get_int(data, tag), 0) = 1;
