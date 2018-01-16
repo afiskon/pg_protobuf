@@ -80,7 +80,7 @@ BEGIN
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
 
-CREATE FUNCTION protobuf_get_string_multi(data bytea, tag int) RETURNS text AS $$
+CREATE FUNCTION protobuf_get_string_multi(data bytea, tag int) RETURNS text[] AS $$
 DECLARE
     bytes bytea[];
     strings text[];
@@ -105,3 +105,9 @@ BEGIN
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
 
+/*
+CREATE FUNCTION protobuf_get_bool_multi(data bytea, tag int) RETURNS boolean[] AS $$
+BEGIN
+END
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
+*/
