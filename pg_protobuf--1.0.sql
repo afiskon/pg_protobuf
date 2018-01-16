@@ -1,6 +1,7 @@
 -- complain if script is sourced in psql, rather than via CREATE EXTENSION
 \echo Use "CREATE EXTENSION pg_protobuf" to load this file. \quit
 
+-- vim: set ai et ts=4 sw=4:
 CREATE FUNCTION protobuf_decode(bytea)
     RETURNS cstring
     AS 'MODULE_PATHNAME'
