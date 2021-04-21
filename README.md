@@ -7,6 +7,8 @@ Protobuf support for PostgreSQL.
 How to install:
 
 ```
+# On Ubuntu:
+# sudo apt install postgresql-server-dev-13
 make
 make install
 make installcheck
