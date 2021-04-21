@@ -8,10 +8,14 @@ How to install:
 
 ```
 # On Ubuntu:
-# sudo apt install postgresql-server-dev-13
+sudo apt install postgresql-server-dev-13
+cd /tmp
+git clone https://github.com/afiskon/pg_protobuf.git
+cd pg_protobuf
 make
-make install
-make installcheck
+sudo make install
+chmod a+w .
+sudo -u postgres make installcheck
 ```
 
 Usage example:
