@@ -99,7 +99,7 @@ Datum protobuf_decode(PG_FUNCTION_ARGS) {
         if(len >= result_buff_free) {
             result_buff_free += result_buff_size;
             result_buff_size *= 2;
-            repalloc(result_buff, result_buff_size);
+            result_buff = repalloc(result_buff, result_buff_size);
         }
 
         memcpy(result_buff + (result_buff_size - result_buff_free), temp_buff, len+1);
