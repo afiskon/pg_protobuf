@@ -106,7 +106,7 @@ Datum protobuf_decode(PG_FUNCTION_ARGS) {
         result_buff_free -= len;
     }
 
-    PG_RETURN_CSTRING((Datum)result_buff);
+    PG_RETURN_CSTRING(result_buff);
 }
 
 /* Common code used in all protobuf_get_*_multi procedures */
